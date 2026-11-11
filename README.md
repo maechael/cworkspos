@@ -13,7 +13,8 @@ Laravel 12 (Blade) with React screens for the cashier, receiving and stock count
 - **Receive delivery**: scan items as they are unpacked. Each delivery line keeps its own expiry date, and "+ another date" splits one item into two, such as boxes that expire differently. A blank date gets a reminder before saving. On a saved delivery's page, dates can be added or corrected, and "Some have another date" moves pieces still on the shelf to their own date.
 - **Stock count**: scan the shelf, one scan per piece. Saving adjusts stock to what was counted.
 - **Adjust stock** (on each product): enter what is really on the shelf and a reason, such as damaged or expired. Stock and expiry lots follow, and the stock history records the change, the reason and who made it. Admins only.
-- **Dashboard**: a greeting with what needs attention, then charts for transactions per day and top sellers, each with a table view. A recent sales table for today, this week or this month, with filter, paging and CSV export, and a side rail with this week's deliveries and expiring lots, items expiring soon and low stock.- **Look of the admin pages**: a blue brand with a sidebar that collapses to icons and a light or dark theme, both remembered per device (buttons in the top bar). Colors are set in `resources/css/app.css`.
+- **Dashboard**: a greeting with what needs attention, then charts for transactions per day and top sellers, each with a table view. A recent sales table for today, this week or this month, with filter, paging and CSV export, and a side rail with this week's deliveries and expiring lots, items expiring soon and low stock.
+- **Look of the admin pages**: a blue brand with a sidebar that collapses to icons and a light or dark theme, both remembered per device (buttons in the top bar). Colors are set in `resources/css/app.css`.
 - **Reports**: sales by day, category and product; inventory value; expiring items; full stock movement history. Inventory value also takes dates (last 30 days by default): it shows the profit made in those dates, how long each item's stock lasts, and an estimate of the profit today's stock should make in the rest of the month and the next 30 days at that selling speed.
 - **Users**: Owner/Admin sees everything. Cashier sees only the POS and their own sales, all in the POS's green with their own name at the top of the menu. Admin can void a sale (items go back to stock).
 
@@ -29,34 +30,138 @@ and new sales are briefly highlighted. Polling pauses while the browser tab is h
 
 **Years of data:** the sales, stock history and expiry queries have indexes made for them (`database/migrations/2026_11_11_000002_add_indexes_for_large_data.php`), and were timed against 400,000 sales and 1.4 million sale lines. Stock history pages with Previous / Next instead of counting every row. The dashboard's top sellers are kept for a minute and the cashier's best-seller order for 10 minutes, because both are asked for constantly. Any query slower than a second is written to `storage/logs/laravel.log` with its page, and so is a list that runs one query per row (tests fail on that).
 
-## Logins (change these after first use)
+## Installation
 
-| Role | Username | Password |
+### 1. What the computer needs
+
+| Program | Version | Where to get it |
 |---|---|---|
-| Owner / Admin | `arnold` | `arnold123` |
-| Cashier | `cashier` | `cashier123` |
+| **XAMPP** (PHP and MySQL/MariaDB) | PHP 8.2 or newer | https://www.apachefriends.org |
+| **Composer** (PHP packages) | 2.x | https://getcomposer.org/download |
+| **Node.js** (builds the screens) | 20 or newer | https://nodejs.org |
+| **Git** | any | https://git-scm.com |
 
-## Running it
-
-1. Start **MySQL** in the XAMPP Control Panel. The database is `arnold_bulan_minigrocery`.
-2. Either:
-   - start **Apache** too and open http://localhost/arnold-bulan-minigrocery/, or
-   - run `php artisan serve` in this folder and open http://localhost:8000
-
-## First-time setup on another computer
+On Windows, let the Composer installer use `C:\xampp\php\php.exe`. Open a new terminal afterwards and check that each one answers:
 
 ```bash
+php -v
+composer -V
+node -v
+npm -v
+git --version
+```
+
+### 2. Download the code and its packages
+
+```bash
+git clone https://github.com/maechael/cworkspos.git
+cd cworkspos
 composer install
 npm install
-npm run build
-copy .env.example .env   # then set DB_DATABASE=arnold_bulan_minigrocery, DB_USERNAME=root
+```
+
+### 3. Settings
+
+```bash
+copy .env.example .env        # Windows
+# cp .env.example .env        # macOS / Linux
 php artisan key:generate
+```
+
+`.env` already points at XAMPP's MySQL (user `root`, no password, database `arnold_bulan_minigrocery`). If your MySQL is set up differently, open `.env` in a text editor and change these lines:
+
+```ini
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=arnold_bulan_minigrocery
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### 4. Create the database and its tables
+
+Start **MySQL** in the XAMPP Control Panel, then:
+
+```bash
+# Windows (XAMPP)
+C:\xampp\mysql\bin\mysql -u root -e "CREATE DATABASE arnold_bulan_minigrocery CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+# macOS / Linux: mysql -u root -e "CREATE DATABASE arnold_bulan_minigrocery CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+
 php artisan migrate --seed
 ```
 
-`php artisan migrate --seed` adds sample products, a delivery and a week of sales so the dashboard has data.
-For the store's real start, remove `$this->call(DemoSeeder::class);` from `database/seeders/DatabaseSeeder.php`
-and run `php artisan migrate:fresh --seed` (this erases all data).
+You can also create the database in phpMyAdmin (http://localhost/phpmyadmin) instead of the `mysql` line.
+`--seed` adds the two accounts below, plus sample products, a delivery and a week of sales so the dashboard has data.
+
+### 5. Build the screens and start the app
+
+```bash
+npm run build
+php artisan serve
+```
+
+Open http://localhost:8000 and sign in.
+
+### Signing in
+
+| Role | Username |
+|---|---|
+| Owner / Admin | `arnold` |
+| Cashier | `cashier` |
+
+The starting passwords are in `database/seeders/DatabaseSeeder.php`. **Change both right after the first sign-in** (Owner: System → User accounts), because anyone who can read this code knows them.
+
+### Using it on phones and tablets in the store
+
+Start the app so other devices on the same Wi-Fi can reach it, and find this computer's address:
+
+```bash
+php artisan serve --host=0.0.0.0 --port=8000
+ipconfig                      # Windows: look for "IPv4 Address", such as 192.168.1.20
+# ip addr                     # Linux / macOS: ifconfig
+```
+
+On the phone or tablet, open `http://192.168.1.20:8000` (with this computer's address). If Windows asks, allow PHP through the firewall on private networks.
+
+### Running it with XAMPP's Apache instead
+
+Put the folder in `C:\xampp\htdocs\`, start **Apache** and **MySQL** in the XAMPP Control Panel, and open `http://localhost/<folder name>/`, such as http://localhost/cworkspos/. The `.htaccess` in the folder forwards to `public/`. Set `APP_URL` in `.env` to the same address.
+
+### Everyday commands
+
+| What | Command |
+|---|---|
+| Start the app | `php artisan serve` |
+| Work on the screens with instant reload (in a second terminal, beside `php artisan serve`) | `npm run dev` |
+| Rebuild the screens after changing them | `npm run build` |
+| Run the tests (PowerShell; uses a throwaway in-memory database, never the store's) | `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php vendor/bin/phpunit --exclude-filter ExampleTest` |
+| Run the tests (macOS / Linux) | `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/phpunit --exclude-filter ExampleTest` |
+| Clear cached settings after editing `.env` | `php artisan optimize:clear` |
+
+### Getting a newer version later
+
+```bash
+git pull
+composer install
+npm install
+npm run build
+php artisan migrate
+```
+
+### Starting the store with no sample data
+
+This **erases every product, sale and delivery**. Remove `$this->call(DemoSeeder::class);` from `database/seeders/DatabaseSeeder.php`, then run:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+### Before the store relies on it
+
+- In `.env`, set `APP_ENV=production` and `APP_DEBUG=false`, so error pages don't show code and settings.
+- Change the two starting passwords, as above.
+- For big reports, give MySQL more memory: in `C:\xampp\mysql\bin\my.ini` set `innodb_buffer_pool_size=512M`, then stop and start MySQL in the XAMPP Control Panel.
 
 ## Barcode scanner
 
