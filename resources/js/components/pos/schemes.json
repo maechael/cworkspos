@@ -1,0 +1,32 @@
+{
+    "fresh-green": {
+        "name": "Fresh Green",
+        "note": "White sidebar, mint page",
+        "bg": "#F2F8F5", "surface": "#FFFFFF", "panel": "#FBFDFC",
+        "brand": "#08854C", "brandDark": "#066A3C", "onBrand": "#FFFFFF",
+        "soft": "#E4F5EC", "softInk": "#0A5C37",
+        "heading": "#0E3B29", "text": "#1E2D26", "muted": "#566A60", "border": "#DFEAE3",
+        "side": "#FFFFFF", "sideText": "#46574F", "sideBorder": "#DFEAE3", "sideActive": "#E4F5EC", "sideActiveText": "#0A5C37",
+        "pal": [["Emerald", "#08854C"], ["Mint", "#E4F5EC"], ["Page", "#F2F8F5"], ["Forest ink", "#0E3B29"], ["White", "#FFFFFF"]]
+    },
+    "leaf-green": {
+        "name": "Leaf Green",
+        "note": "Dark sidebar, warm page",
+        "bg": "#FAF7F0", "surface": "#FFFFFF", "panel": "#FFFEFB",
+        "brand": "#457F30", "brandDark": "#37662A", "onBrand": "#FFFFFF",
+        "soft": "#EAF3E2", "softInk": "#2F5A20",
+        "heading": "#1B2418", "text": "#262B22", "muted": "#5E6356", "border": "#EAE5D8",
+        "side": "#1E211C", "sideText": "#CDD2C7", "sideBorder": "#1E211C", "sideActive": "#457F30", "sideActiveText": "#FFFFFF",
+        "pal": [["Leaf", "#457F30"], ["Sprout", "#EAF3E2"], ["Cream", "#FAF7F0"], ["Charcoal", "#1E211C"], ["White", "#FFFFFF"]]
+    },
+    "deep-forest": {
+        "name": "Deep Forest",
+        "note": "Green sidebar, strongest contrast",
+        "bg": "#EFF5F1", "surface": "#FFFFFF", "panel": "#FAFCFB",
+        "brand": "#0F5C3A", "brandDark": "#0B4A2E", "onBrand": "#FFFFFF",
+        "soft": "#DDEFE5", "softInk": "#0B4A2E",
+        "heading": "#0B2E20", "text": "#1A2A22", "muted": "#50645A", "border": "#DAE6DE",
+        "side": "#0F3D2A", "sideText": "#CFE3D8", "sideBorder": "#0F3D2A", "sideActive": "#FFFFFF", "sideActiveText": "#0F3D2A",
+        "pal": [["Forest", "#0F5C3A"], ["Pale leaf", "#DDEFE5"], ["Page", "#EFF5F1"], ["Pine", "#0F3D2A"], ["White", "#FFFFFF"]]
+    }
+}

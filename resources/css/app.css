@@ -1,0 +1,400 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source "../**/*.blade.php";
+@source "../**/*.js";
+@source "../**/*.jsx";
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+    --color-page: #f3f6fc;
+    --color-brand-50: #eef3ff;
+    --color-brand-100: #dbe6fe;
+    --color-brand-500: #3468e8;
+    --color-brand-600: #2358d6;
+    --color-brand-700: #1c46ad;
+    --color-brand-800: #2149a8;
+    --color-brand-900: #18387f;
+}
+
+/* Chart and status colors */
+:root {
+    --chart-1: #2358d6;
+    --status-good: #16a34a;
+    --status-warn: #d97706;
+    --status-bad: #dc2626;
+}
+
+/*
+ * Dark theme for the admin pages, chosen with the moon button in the top bar. The palette itself is
+ * re-pointed, so pages built from Tailwind colors follow without their own dark rules. Screen only,
+ * so printed reports stay black on white.
+ */
+@media screen {
+    [data-theme='dark'] {
+        color-scheme: dark;
+        --chart-1: #5a82ee;
+        --status-good: #22c55e;
+        --status-warn: #f59e0b;
+        --status-bad: #f87171;
+        --color-page: #0d1322;
+        --color-white: #161d30;
+        --color-slate-50: #1b2338;
+        --color-slate-100: #232c44;
+        --color-slate-200: #2d3752;
+        --color-slate-300: #3f4b6a;
+        --color-slate-400: #7f8bab;
+        --color-slate-500: #a0abc5;
+        --color-slate-600: #b8c1d6;
+        --color-slate-700: #cfd6e6;
+        --color-slate-800: #e4e9f3;
+        --color-slate-900: #f2f5fb;
+        --color-brand-50: #1b2a50;
+        --color-brand-100: #233666;
+        --color-brand-500: #6f94f5;
+        --color-brand-600: #3d6ce6;
+        --color-brand-700: #a3bcfb;
+        --color-brand-800: #b9ccfc;
+        --color-brand-900: #dbe6fe;
+        --color-red-50: #3a1b22;
+        --color-red-100: #4a2029;
+        --color-red-600: #e5484d;
+        --color-red-700: #fca5a5;
+        --color-red-800: #fecaca;
+        --color-amber-50: #33270f;
+        --color-amber-100: #453413;
+        --color-amber-700: #fcd34d;
+        --color-amber-800: #fde68a;
+        --color-green-50: #12301f;
+        --color-green-100: #173d27;
+        --color-green-700: #86efac;
+        --color-green-800: #bbf7d0;
+        --color-amber-600: #fbbf24;
+        --color-blue-50: #172a4d;
+        --color-sky-100: #12324a;
+        --color-sky-700: #7dd3fc;
+        --color-purple-100: #2f2350;
+        --color-purple-700: #d8b4fe;
+    }
+    /* "White" text on a colored button stays white, even though white surfaces go dark */
+    [data-theme='dark'] .text-white, [data-theme='dark'] .btn-primary, [data-theme='dark'] .btn-danger { color: #fff; }
+    [data-theme='dark'] .chart-tip { background: #2a3556; border: 1px solid rgb(255 255 255 / 0.14); }
+    [data-theme='dark'] .theme-moon { display: none; }
+    :root:not([data-theme='dark']) .theme-sun { display: none; }
+}
+
+@layer base {
+    /* A border with no color named is a soft line, not the text color */
+    *, ::before, ::after { border-color: var(--color-slate-200); }
+}
+
+@layer components {
+    .app-sidebar nav, .pos-sidebar nav { scrollbar-width: thin; }
+    .card { @apply rounded-2xl border border-slate-200/70 bg-white; box-shadow: 0 1px 2px rgb(30 50 110 / 0.04), 0 10px 24px -18px rgb(30 50 110 / 0.2); }
+    .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed; }
+    .btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700; }
+    .btn-secondary { @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50; }
+    .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+    .input { @apply block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none; }
+    .label { @apply mb-1 block text-sm font-medium text-slate-700; }
+    .table { @apply w-full text-left text-sm; }
+    .table th { @apply border-b border-slate-100 px-4 py-3 text-xs font-medium text-slate-500; }
+    .table td { @apply border-b border-slate-100 px-4 py-3 align-middle; }
+    .badge { @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium; }
+
+    /* Sidebar */
+    .nav-link { @apply relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900; }
+    .nav-link.active { @apply bg-brand-50 font-semibold text-brand-700; }
+    .nav-link.active::after { content: ''; position: absolute; top: 20%; right: 4px; bottom: 20%; width: 3px; border-radius: 3px; background: var(--color-brand-600); }
+    .nav-group { @apply mt-4 mb-1 px-3 text-[11px] font-semibold tracking-wider text-slate-500 uppercase; }
+
+    /* Top bar */
+    .bar-btn { @apply relative flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-200/60 hover:text-slate-900; }
+    .bar-menu { @apply absolute right-0 z-50 mt-2 rounded-xl border border-slate-200 bg-white p-1.5 text-sm shadow-lg; }
+    .bar-menu a, .bar-menu button { @apply flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-50; }
+
+    /* Dashboard */
+    /* On a solid color, white stays white in both themes */
+    .on-color { --color-white: #fff; }
+    .dash-hero { background: linear-gradient(112deg, #3468e8 0%, #2358d6 45%, #1c46ad 100%); box-shadow: 0 16px 30px -18px rgb(35 88 214 / 0.75); }
+
+    /* Charts */
+    .chart-svg { overflow: visible; }
+    .chart-svg:focus-visible, .chart-row:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; border-radius: 6px; }
+    .chart-svg:focus { outline: none; }
+    .chart-grid { stroke: var(--color-slate-100); stroke-width: 1; }
+    .chart-text { fill: var(--color-slate-500); font-size: 11px; }
+    .chart-text-strong { fill: var(--color-slate-800); font-weight: 600; }
+    .chart-tip { position: absolute; z-index: 20; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: #101a33; color: #fff; font-size: 12px; line-height: 1.5; white-space: nowrap; box-shadow: 0 6px 18px rgb(10 20 50 / 0.3); }
+    .chart-tip-title { font-size: 11px; opacity: 0.75; }
+}
+
+/* A sidebar collapsed with the top bar button shrinks to its icons. The cashier's menu has its own controls, below. */
+@media (min-width: 1024px) {
+    [data-sidebar='collapsed'] .app-sidebar { width: 4.5rem; padding-inline: 0.75rem; }
+    [data-sidebar='collapsed'] .app-sidebar .nav-text { display: none; }
+    [data-sidebar='collapsed'] .app-sidebar .nav-link { justify-content: center; padding-inline: 0; }
+    [data-sidebar='collapsed'] .app-sidebar .nav-link.active::after { display: none; }
+    [data-sidebar='collapsed'] .app-sidebar .nav-group { height: 1px; margin: 0.75rem 0.25rem; padding: 0; overflow: hidden; color: transparent; background: var(--color-slate-200); }
+    [data-sidebar='collapsed'] .app-sidebar .brand-link { justify-content: center; padding-inline: 0; }
+}
+
+/*
+ * The page around every cashier screen. The layout puts the saved green's --pos-* colors on <body>
+ * (from schemes.json), and the brand palette follows them so the phone top bar turns green too.
+ */
+.pos-chrome {
+    --color-brand-50: var(--pos-soft);
+    --color-brand-500: var(--pos-brand);
+    --color-brand-600: var(--pos-brand);
+    --color-brand-700: var(--pos-brand-dark);
+    --color-brand-800: var(--pos-brand-dark);
+    --color-brand-900: var(--pos-heading);
+    background: var(--pos-bg);
+    font-family: Poppins, ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+.pos-sidebar { background: var(--pos-side); color: var(--pos-side-text); border-right: 1px solid var(--pos-side-border); }
+.pos-sidebar .nav-link { color: var(--pos-side-text); }
+.pos-sidebar .nav-link:hover { background: color-mix(in srgb, var(--pos-side-text) 12%, transparent); color: var(--pos-side-text); }
+.pos-sidebar .nav-link.active { background: var(--pos-side-active); color: var(--pos-side-active-text); }
+.pos-sidebar .nav-link.active::after { display: none; }
+.pos-sidebar .nav-group { color: var(--pos-side-text); opacity: 0.75; }
+.pos-drawer-close { color: var(--pos-side-text); }
+.pos-drawer-close:hover { background: color-mix(in srgb, var(--pos-side-text) 12%, transparent); color: var(--pos-side-text); }
+/* The cashier's phone top bar stays in their green */
+.pos-mobile-bar { background: var(--pos-heading); color: #fff; border-color: transparent; }
+.pos-mobile-bar .bar-btn { color: #fff; }
+.pos-mobile-bar .bar-btn:hover { background: rgb(255 255 255 / 0.16); color: #fff; }
+
+/*
+ * The cashier's menu is open, minimized to icons, or hidden. The layout sets the state on <html> and
+ * remembers it on this device. Phones keep their own Menu button, so this starts where the sidebar does.
+ */
+.pos-sidebar nav { scrollbar-color: color-mix(in srgb, var(--pos-side-text) 35%, transparent) transparent; }
+.pos-nav-controls { border-top: 1px solid color-mix(in srgb, var(--pos-side-text) 18%, transparent); }
+.pos-nav-restore, .pos-nav-if-mini { display: none; }
+.pos-nav-restore.on-brand { color: var(--pos-on-brand); }
+.pos-nav-restore.on-brand:hover { background: rgb(255 255 255 / 0.18); color: var(--pos-on-brand); }
+@media (min-width: 1024px) {
+    .pos-sidebar { transition: width 0.18s ease, padding 0.18s ease, visibility 0.18s; }
+    [data-pos-nav='mini'] .pos-sidebar { width: 4.5rem; padding-inline: 0.75rem; }
+    [data-pos-nav='mini'] .pos-sidebar nav { scrollbar-width: none; } /* a scrollbar would push the icons off center; the list still scrolls */
+    [data-pos-nav='mini'] .pos-sidebar .nav-text { display: none; }
+    [data-pos-nav='mini'] .pos-sidebar .nav-link { justify-content: center; padding-inline: 0; }
+    [data-pos-nav='mini'] .pos-sidebar .brand-link { justify-content: center; padding-inline: 0; }
+    [data-pos-nav='mini'] .pos-sidebar .nav-group { height: 1px; margin: 0.75rem 0.25rem; padding: 0; overflow: hidden; color: transparent; opacity: 1; background: color-mix(in srgb, var(--pos-side-text) 18%, transparent); }
+    [data-pos-nav='mini'] .pos-nav-if-open { display: none; }
+    [data-pos-nav='mini'] .pos-nav-if-mini { display: flex; }
+    [data-pos-nav='hidden'] .pos-sidebar { width: 0; padding-inline: 0; border-right-width: 0; overflow: hidden; visibility: hidden; }
+    [data-pos-nav='hidden'] .pos-nav-restore { display: inline-flex; }
+}
+
+/*
+ * Cashier colors. The brand/slate/white palette is re-pointed at --pos-* (schemes.json), so the shared
+ * components follow the scheme: the 8 POS styles in React, and pages like My sales that use the same classes.
+ */
+.pos-theme {
+    --color-page: var(--pos-bg);
+    --color-brand-50: var(--pos-soft);
+    --color-brand-100: color-mix(in srgb, var(--pos-brand) 18%, var(--pos-surface));
+    --color-brand-500: var(--pos-brand);
+    --color-brand-600: var(--pos-brand);
+    --color-brand-700: var(--pos-brand-dark);
+    --color-brand-800: var(--pos-brand-dark);
+    --color-brand-900: var(--pos-heading);
+    --pos-shadow: 0 1px 2px rgb(16 40 28 / 0.04), 0 8px 20px -14px rgb(16 40 28 / 0.18);
+    --color-white: var(--pos-surface);
+    --color-slate-50: color-mix(in srgb, var(--pos-text) 3%, var(--pos-surface));
+    --color-slate-100: color-mix(in srgb, var(--pos-text) 7%, var(--pos-surface));
+    --color-slate-200: var(--pos-border);
+    --color-slate-300: color-mix(in srgb, var(--pos-text) 18%, var(--pos-surface));
+    --color-slate-400: color-mix(in srgb, var(--pos-muted) 75%, var(--pos-surface));
+    --color-slate-500: var(--pos-muted);
+    --color-slate-600: color-mix(in srgb, var(--pos-muted) 60%, var(--pos-text));
+    --color-slate-700: color-mix(in srgb, var(--pos-muted) 30%, var(--pos-text));
+    --color-slate-800: var(--pos-text);
+    --color-slate-900: var(--pos-text);
+    background: var(--pos-bg);
+    color: var(--pos-text);
+    color-scheme: light;
+}
+.pos-theme * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--pos-muted) 45%, transparent) transparent; }
+.pos-theme .btn { border-radius: 9999px; }
+.pos-theme .card { box-shadow: var(--pos-shadow); }
+.pos-theme .btn-primary { color: var(--pos-on-brand); }
+.pos-theme :focus-visible { outline: 2px solid var(--pos-brand); outline-offset: 2px; }
+.pos-theme .pos-field input:focus-visible, .pos-theme .input:focus-visible { outline: none; } /* these show focus with their own ring */
+.pos-theme .pos-toast :focus-visible { outline-color: #fff; }
+
+@keyframes pos-skel { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes pos-toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes pos-toast-time { to { transform: scaleX(0); } }
+
+@layer components {
+    /* Loading placeholders. Stay first in this layer, so a card's own corners win over these. */
+    .pos-skel {
+        /* The owner's Sales page shares a screen with My sales, so these also work without the cashier colors */
+        --skel: color-mix(in srgb, var(--pos-text, var(--color-slate-800)) 9%, var(--pos-surface, var(--color-white)));
+        --skel-shine: color-mix(in srgb, var(--pos-text, var(--color-slate-800)) 3%, var(--pos-surface, var(--color-white)));
+        border-radius: 6px;
+        background: linear-gradient(100deg, var(--skel) 30%, var(--skel-shine) 50%, var(--skel) 70%) 0 0 / 250% 100%;
+        animation: pos-skel 1.5s ease-in-out infinite;
+    }
+
+    /* Undo toast */
+    .pos-toast { background: var(--pos-heading); color: #fff; box-shadow: 0 12px 28px -10px rgb(8 30 20 / 0.6); animation: pos-toast-in 0.18s ease-out; }
+    .pos-toast-undo { @apply inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold transition; background: rgb(255 255 255 / 0.16); color: #fff; }
+    .pos-toast-undo:hover { background: rgb(255 255 255 / 0.28); }
+    .pos-toast-close { @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm transition; color: #fff; }
+    .pos-toast-close:hover { background: rgb(255 255 255 / 0.16); }
+    .pos-toast-time { position: absolute; inset-inline: 0; bottom: 0; height: 3px; background: rgb(255 255 255 / 0.55); transform-origin: left; animation: pos-toast-time linear forwards; }
+
+    .pos-muted { color: var(--pos-muted); }
+    .pos-heading { color: var(--pos-heading); }
+    .pos-backdrop { background: rgb(8 30 20 / 0.5); }
+    .pos-error { background: #fbe9e7; color: #a12a1c; }
+    .pos-warn { background: #fdf3d6; color: #6e4b00; }
+    .pos-warn-text { color: #8a5a00; }
+    .pos-danger-text { color: #b3261e; }
+
+    /* Surfaces */
+    .pos-card { background: var(--pos-surface); border: 1px solid var(--pos-border); border-radius: 16px; box-shadow: var(--pos-shadow); }
+    .pos-topbar { background: var(--pos-surface); border-bottom: 1px solid var(--pos-border); }
+    .pos-order { background: var(--pos-panel); border-left: 1px solid var(--pos-border); }
+    .pos-rule { border-color: var(--pos-border); }
+
+    /* Buttons */
+    .pos-btn { @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45; }
+    .pos-btn-primary { background: var(--pos-brand); color: var(--pos-on-brand); }
+    .pos-btn-primary:hover:not(:disabled) { background: var(--pos-brand-dark); }
+    .pos-btn-soft { background: var(--pos-soft); color: var(--pos-soft-ink); }
+    .pos-btn-soft:hover:not(:disabled) { background: color-mix(in srgb, var(--pos-brand) 20%, var(--pos-surface)); }
+    .pos-btn-line { background: var(--pos-surface); border: 1px solid var(--pos-border); color: var(--pos-text); }
+    .pos-btn-line:hover:not(:disabled) { border-color: var(--pos-brand); }
+    .pos-icon-btn { @apply inline-flex shrink-0 items-center justify-center rounded-full transition; color: var(--pos-muted); }
+    .pos-icon-btn:hover { background: var(--pos-soft); color: var(--pos-soft-ink); }
+
+    /* Search box */
+    .pos-field { background: var(--pos-surface); border: 1px solid var(--pos-border); border-radius: 14px; transition: border-color 0.15s, box-shadow 0.15s; }
+    .pos-field:focus-within { border-color: var(--pos-brand); box-shadow: 0 0 0 3px var(--pos-soft); }
+    .pos-field input { min-width: 0; width: 100%; background: transparent; color: var(--pos-text); outline: none; }
+    .pos-field input::placeholder { color: var(--pos-muted); }
+
+    /* Category tiles and chips */
+    .pos-tile { @apply flex w-[84px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1 py-2.5 text-center text-xs leading-tight font-medium transition active:scale-[0.97]; min-height: 84px; background: var(--pos-surface); border: 1px solid var(--pos-border); color: var(--pos-text); }
+    .pos-tile:hover { border-color: var(--pos-brand); }
+    .pos-tile.active { background: var(--pos-soft); border-color: var(--pos-brand); color: var(--pos-soft-ink); box-shadow: inset 0 0 0 1px var(--pos-brand); }
+    .pos-chip { @apply shrink-0 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition; border: 1px solid var(--pos-border); background: var(--pos-surface); color: var(--pos-text); }
+    .pos-chip:hover { border-color: var(--pos-brand); }
+    .pos-chip.active { background: var(--pos-brand); border-color: var(--pos-brand); color: var(--pos-on-brand); }
+
+    /* Small screens scroll the whole page; from lg up the tiles stay put and only the products scroll */
+    .pos-scroll-page { @apply flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden; }
+    .pos-scroll-list { @apply p-0.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto; }
+
+    /* Product cards */
+    .pos-grid { @apply grid gap-3; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .pos-grid.large { @apply gap-4; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+    .pos-product { @apply flex w-full flex-col items-center gap-1 rounded-2xl p-2.5 text-center transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50; background: var(--pos-surface); border: 1px solid var(--pos-border); color: var(--pos-text); box-shadow: var(--pos-shadow); content-visibility: auto; contain-intrinsic-size: auto 210px; }
+    .pos-product:hover:not(:disabled) { border-color: var(--pos-brand); }
+    .pos-product.in-cart { border-color: var(--pos-brand); box-shadow: inset 0 0 0 1px var(--pos-brand); }
+    .pos-product.sold-out { background: color-mix(in srgb, var(--pos-bg) 70%, var(--pos-surface)); }
+    .pos-product.sold-out .pos-thumb { filter: grayscale(0.7); opacity: 0.7; }
+    .pos-thumb { @apply relative mb-1 flex w-full items-center justify-center rounded-xl; aspect-ratio: 16 / 10; }
+    .pos-count { @apply absolute top-1.5 right-1.5 flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold; background: var(--pos-brand); color: var(--pos-on-brand); }
+    .pos-add { @apply mt-1 inline-flex w-full max-w-32 items-center justify-center rounded-full py-1.5 text-sm font-semibold; background: var(--pos-brand); color: var(--pos-on-brand); }
+    .pos-product:hover:not(:disabled) .pos-add { background: var(--pos-brand-dark); }
+
+    /* Order lines */
+    .pos-line { @apply cursor-pointer rounded-xl px-2.5 py-2.5 transition; }
+    .pos-line:hover { background: color-mix(in srgb, var(--pos-soft) 50%, transparent); }
+    .pos-line.active { background: var(--pos-soft); }
+    .pos-qty { @apply flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md px-1 text-xs font-semibold; background: var(--pos-bg); border: 1px solid var(--pos-border); color: var(--pos-text); }
+    .pos-stepper button { @apply flex h-8 w-8 items-center justify-center rounded-full text-base leading-none transition; background: var(--pos-surface); border: 1px solid var(--pos-border); color: var(--pos-text); }
+    .pos-stepper button:hover { border-color: var(--pos-brand); }
+    .pos-stepper input { @apply h-8 w-14 rounded-lg text-center text-sm; background: var(--pos-surface); border: 1px solid var(--pos-border); color: var(--pos-text); }
+    .pos-table-row { border-top: 1px solid var(--pos-border); cursor: pointer; }
+    .pos-table-row:hover { background: color-mix(in srgb, var(--pos-soft) 50%, transparent); }
+    .pos-table-row.active { background: var(--pos-soft); }
+    .pos-qty-input { @apply w-16 rounded-lg px-1 py-1 text-right; background: transparent; border: 1px solid transparent; color: var(--pos-text); }
+    .pos-qty-input:hover, .pos-qty-input:focus { background: var(--pos-surface); border-color: var(--pos-border); }
+    .pos-kbd { @apply rounded px-1.5 py-0.5 text-xs font-medium; font-family: ui-monospace, Consolas, monospace; background: var(--pos-bg); border: 1px solid var(--pos-border); color: var(--pos-muted); }
+    .pos-mono { font-family: ui-monospace, Consolas, monospace; }
+}
+
+/*
+ * Phones and tablets. Below 1024px the sidebar is a menu that slides in from the left (the ☰ button in
+ * the top bar), over a dimmed page. The layout sets data-drawer="open" on <html> while it is out.
+ */
+@media (max-width: 1023.98px) {
+    .app-drawer { visibility: hidden; transform: translateX(-100%); transition: transform 0.2s ease, visibility 0.2s; }
+    /* Visible at once when opening, so focus can move into it; hidden only after it has slid away */
+    [data-drawer='open'] .app-drawer { visibility: visible; transform: none; transition: transform 0.2s ease, visibility 0s; }
+    [data-drawer='open'] .drawer-backdrop { display: block; }
+    [data-drawer='open'] body { overflow: hidden; }
+}
+.drawer-backdrop { display: none; background: rgb(8 15 35 / 0.45); }
+
+/*
+ * Tables on a phone. A table with 5 or more columns becomes one card per row: the first column is the
+ * card's title and each other column is a "Label  value" line. resources/js/tableCards.js writes the
+ * labels from the headings. Screen only, so a printed report stays a table. Outside a layer, so it wins
+ * over the padding and widths the tables set with utility classes.
+ */
+@media screen and (max-width: 639.98px) {
+    .table th, .table td { padding-inline: 0.75rem; }
+
+    table.is-stacked, table.is-stacked > tbody, table.is-stacked > tfoot, table.is-stacked > thead, table.is-stacked tr { display: block; width: 100%; min-width: 0; }
+    table.is-stacked > thead th { display: none; }
+    table.is-stacked tr { position: relative; padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-slate-100); }
+    table.is-stacked > thead > tr { padding: 0; border: 0; }
+    /* "Select all" stays, as the only heading on a card list */
+    table.is-stacked > thead th:has(input[type='checkbox']) { display: flex; align-items: center; gap: 0.6rem; width: auto; padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-slate-100); font-size: 0.8125rem; white-space: nowrap; }
+    table.is-stacked > thead th:has(input[type='checkbox'])::after { content: 'Select all on this page'; }
+    table.is-stacked > tbody > tr:last-child { border-bottom: 0; }
+    /* The label floats left and the value stays together on the right, however many pieces it is made of */
+    table.is-stacked td { display: flow-root; width: auto; min-width: 0; max-width: none; padding: 0.2rem 0; border: 0; text-align: right; white-space: normal; overflow: visible; }
+    table.is-stacked td::before { content: attr(data-label); float: left; max-width: 48%; margin-right: 0.75rem; text-align: left; font-size: 0.75rem; font-weight: 500; line-height: 1.6; color: var(--color-slate-500); }
+    table.is-stacked td[data-cell='title'] { display: block; padding-bottom: 0.35rem; text-align: left; font-size: 0.9375rem; }
+    table.is-stacked td:is([data-cell='title'], [data-cell='actions'], [data-cell='span'], [data-cell='check'])::before { content: none; }
+    table.is-stacked td[data-cell='check'] { position: absolute; top: 0.75rem; right: 1rem; padding: 0; }
+    table.is-stacked tr:has(> td[data-cell='check']) > td[data-cell='title'] { padding-right: 2.25rem; }
+    table.is-stacked td[data-cell='field'] { display: block; padding: 0.3rem 0; text-align: left; }
+    table.is-stacked td[data-cell='field']::before { display: block; float: none; max-width: none; margin-bottom: 0.25rem; }
+    table.is-stacked td[data-cell='field'] :is(input:not([type='checkbox']):not([type='radio']):not([type='number']), select, textarea) { width: 100%; }
+    table.is-stacked td[data-cell='actions'] { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem 1rem; padding-top: 0.5rem; }
+    table.is-stacked td[data-cell='actions']:empty { display: none; }
+    table.is-stacked td[data-cell='span'] { display: block; text-align: center; }
+    /* A card list needs no sideways scrolling; the wrappers keep their rounded corners */
+    :has(> table.is-stacked) { overflow-x: visible; }
+}
+
+/*
+ * Touch screens (phones and tablets): every button, field and menu item is at least 40px tall, fields use
+ * 16px text so the phone doesn't zoom in when one is tapped, and checkboxes are big enough to hit.
+ */
+@media (pointer: coarse) {
+    .btn, .bar-btn { min-height: 2.5rem; }
+    .bar-btn { min-width: 2.5rem; }
+    .input { min-height: 2.5rem; font-size: 1rem; }
+    .nav-link { min-height: 2.75rem; }
+    .bar-menu a, .bar-menu button { min-height: 2.75rem; }
+    input[type='checkbox'], input[type='radio'] { flex-shrink: 0; width: 1.25rem; height: 1.25rem; }
+    /* A text link that should be easy to hit */
+    .tap { display: inline-flex; align-items: center; min-height: 2.5rem; }
+    /* A small chip keeps its look and gets a bigger invisible hit area */
+    .hit { position: relative; }
+    .hit::after { content: ''; position: absolute; inset: -0.6rem -0.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-drawer { transition: none; }
+    .pos-sidebar { transition: none; }
+    .pos-skel, .pos-toast { animation: none; }
+    .pos-toast-time { display: none; }
+}
+
+@media print {
+    .no-print { display: none !important; }
+}

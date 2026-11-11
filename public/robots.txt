@@ -1,0 +1,5 @@
+# Private store app: every page sends "X-Robots-Tag: noindex" and a robots meta tag, so search engines don't list it.
+# Crawling is left open on purpose. A search engine blocked here can't see the noindex,
+# and may still list a bare link to a page that someone posted elsewhere.
+User-agent: *
+Disallow:

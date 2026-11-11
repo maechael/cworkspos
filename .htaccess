@@ -1,0 +1,5 @@
+# Lets XAMPP serve the app at http://localhost/arnold-bulan-minigrocery/ by forwarding into public/
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
