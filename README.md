@@ -38,16 +38,15 @@ and new sales are briefly highlighted. Polling pauses while the browser tab is h
 |---|---|---|
 | **XAMPP** (PHP and MySQL/MariaDB) | PHP 8.2 or newer | https://www.apachefriends.org |
 | **Composer** (PHP packages) | 2.x | https://getcomposer.org/download |
-| **Node.js** (builds the screens) | 20 or newer | https://nodejs.org |
 | **Git** | any | https://git-scm.com |
+
+Node.js is **not** needed to run the store: the screens come already built in `public/build`. It's only for changing them (see "Changing the screens" below).
 
 On Windows, let the Composer installer use `C:\xampp\php\php.exe`. Open a new terminal afterwards and check that each one answers:
 
 ```bash
 php -v
 composer -V
-node -v
-npm -v
 git --version
 ```
 
@@ -57,7 +56,6 @@ git --version
 git clone https://github.com/maechael/cworkspos.git
 cd cworkspos
 composer install
-npm install
 ```
 
 ### 3. Settings
@@ -94,10 +92,9 @@ php artisan migrate --seed
 You can also create the database in phpMyAdmin (http://localhost/phpmyadmin) instead of the `mysql` line.
 `--seed` adds the two accounts below, plus sample products, a delivery and a week of sales so the dashboard has data.
 
-### 5. Build the screens and start the app
+### 5. Start the app
 
 ```bash
-npm run build
 php artisan serve
 ```
 
@@ -133,8 +130,6 @@ Put the folder in `C:\xampp\htdocs\`, start **Apache** and **MySQL** in the XAMP
 | What | Command |
 |---|---|
 | Start the app | `php artisan serve` |
-| Work on the screens with instant reload (in a second terminal, beside `php artisan serve`) | `npm run dev` |
-| Rebuild the screens after changing them | `npm run build` |
 | Run the tests (PowerShell; uses a throwaway in-memory database, never the store's) | `$env:DB_CONNECTION='sqlite'; $env:DB_DATABASE=':memory:'; php vendor/bin/phpunit --exclude-filter ExampleTest` |
 | Run the tests (macOS / Linux) | `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/phpunit --exclude-filter ExampleTest` |
 | Clear cached settings after editing `.env` | `php artisan optimize:clear` |
@@ -144,10 +139,23 @@ Put the folder in `C:\xampp\htdocs\`, start **Apache** and **MySQL** in the XAMP
 ```bash
 git pull
 composer install
-npm install
-npm run build
 php artisan migrate
 ```
+
+### Changing the screens (developers only)
+
+The screens (`resources/js`, `resources/css`) are built into `public/build`, and that build is committed so the store's computers don't need Node.js. After changing anything in `resources/js` or `resources/css`, install **Node.js 20 or newer** (https://nodejs.org) once, rebuild, and commit the new build with your change:
+
+```bash
+npm install                   # once, and again when package.json changes
+npm run dev                   # optional: instant reload while working, in a second terminal beside php artisan serve
+npm run build                 # before committing
+git add -A
+git commit -m "What changed"
+git push
+```
+
+Stop `npm run dev` before testing the built version: while it runs, the app loads the screens from it instead of `public/build`.
 
 ### Starting the store with no sample data
 
