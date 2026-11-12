@@ -92,6 +92,12 @@ php artisan migrate --seed
 You can also create the database in phpMyAdmin (http://localhost/phpmyadmin) instead of the `mysql` line.
 `--seed` adds the two accounts below, plus sample products, a delivery and a week of sales so the dashboard has data.
 
+**Without `--seed` there are no accounts**, so every sign-in says "Wrong username or password". If you already ran plain `php artisan migrate`, add them with:
+
+```bash
+php artisan db:seed            # add --force if APP_ENV=production, or it stops to ask
+```
+
 ### 5. Start the app
 
 ```bash
