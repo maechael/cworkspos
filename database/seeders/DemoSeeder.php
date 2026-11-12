@@ -16,19 +16,29 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Sample products, deliveries and a week of sales so the dashboard has something to show.
- * For a clean live install, remove the DemoSeeder call in DatabaseSeeder before seeding.
+ * For trying the app out or a staging copy only: php artisan db:seed --class=DemoSeeder
+ * Needs the arnold and cashier accounts (php artisan db:seed) and does nothing if products exist.
  */
 class DemoSeeder extends Seeder
 {
     public function run(): void
     {
         if (Product::exists()) {
+            $this->command?->warn('Products already exist, so no sample data was added. Empty the store first: php artisan store:clear');
+
             return;
         }
 
-        $inventory = app(Inventory::class);
         $owner = User::where('username', 'arnold')->first();
         $cashier = User::where('username', 'cashier')->first();
+        if (! $owner || ! $cashier) {
+            $this->command?->error('The sample sales need the arnold and cashier accounts. Run php artisan db:seed first.');
+
+            return;
+        }
+
+        $this->call(StarterListsSeeder::class);
+        $inventory = app(Inventory::class);
         $cat = Category::pluck('id', 'name');
         $unit = Unit::pluck('id', 'abbreviation');
 

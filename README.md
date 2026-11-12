@@ -90,12 +90,20 @@ php artisan migrate --seed
 ```
 
 You can also create the database in phpMyAdmin (http://localhost/phpmyadmin) instead of the `mysql` line.
-`--seed` adds the two accounts below, plus sample products, a delivery and a week of sales so the dashboard has data.
+`--seed` adds the two accounts below and the starting lists (categories, units, a walk-in supplier). There are no products or sales, so the store starts clean.
 
 **Without `--seed` there are no accounts**, so every sign-in says "Wrong username or password". If you already ran plain `php artisan migrate`, add them with:
 
 ```bash
 php artisan db:seed            # add --force if APP_ENV=production, or it stops to ask
+```
+
+Seeding again never changes a password that was already changed.
+
+To try the app out with sample products, a delivery and a week of sales (not on the store's real copy):
+
+```bash
+php artisan db:seed --class=DemoSeeder
 ```
 
 ### 5. Start the app
@@ -163,13 +171,39 @@ git push
 
 Stop `npm run dev` before testing the built version: while it runs, the app loads the screens from it instead of `public/build`.
 
-### Starting the store with no sample data
+### Emptying the store (keeps the accounts)
 
-This **erases every product, sale and delivery**. Remove `$this->call(DemoSeeder::class);` from `database/seeders/DatabaseSeeder.php`, then run:
+To remove the sample data, or start a copy over, keeping only the accounts:
 
 ```bash
-php artisan migrate:fresh --seed
+php artisan store:clear
 ```
+
+It lists what will go and asks you to type the database name before deleting anything.
+
+**What is deleted:**
+- every product and barcode
+- every sale and receipt
+- every delivery, and the expiry dates they recorded
+- baskets
+- stock counts
+- stock history
+- suppliers
+
+**What is kept:**
+- the accounts, with their passwords and passkeys
+- the POS style settings
+
+Categories and units go back to the starting lists. Numbering starts over, so the next sale or product is number 1.
+
+This cannot be undone, so on the store's real copy, back up first:
+
+```bash
+C:\xampp\mysql\bin\mysqldump -u root arnold_bulan_minigrocery > backup-before-clear.sql
+php artisan store:clear
+```
+
+On a staging copy, `php artisan store:clear --demo` empties it and adds fresh sample data. `--force` skips the question, for scripts.
 
 ### Before the store relies on it
 
