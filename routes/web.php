@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BasketController;
 use App\Http\Controllers\DashboardController;
@@ -30,8 +31,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/pos/sales', [SaleController::class, 'store'])->name('sales.store');
     Route::post('/pos/void-approval', VoidApprovalController::class)->name('pos.void-approval');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
+    Route::get('/sales/find', [SaleController::class, 'find'])->name('sales.find');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
     Route::get('/sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
+
+    // Voids and returns: the owner does them straight away, a cashier with the owner's approval (checked in the controllers)
+    Route::get('/sales/{sale}/void', [SaleController::class, 'voidForm'])->name('sales.void.form');
+    Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
+    Route::get('/sales/{sale}/return', [SaleReturnController::class, 'create'])->name('sales.return');
+    Route::post('/sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales.return.store');
+    Route::get('/approvals/allowed', [ApprovalController::class, 'allowed'])->name('approvals.allowed');
+    Route::post('/approvals/ask', [ApprovalController::class, 'store'])->name('approvals.store');
+    Route::get('/approvals/{approval}', [ApprovalController::class, 'show'])->whereNumber('approval')->name('approvals.show');
+    Route::post('/approvals/{approval}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
     Route::get('/api/products/lookup', [ProductController::class, 'lookup'])->name('products.lookup');
     Route::get('/api/products/search', [ProductController::class, 'search'])->name('products.search');
     Route::get('/api/products/catalog', [ProductController::class, 'catalog'])->name('products.catalog');
@@ -41,9 +53,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
         Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
 
-        Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
-        Route::get('/sales/{sale}/return', [SaleReturnController::class, 'create'])->name('sales.return');
-        Route::post('/sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales.return.store');
+        Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::post('/approvals/switch', [ApprovalController::class, 'toggle'])->name('approvals.switch');
+        Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+        Route::post('/approvals/{approval}/decline', [ApprovalController::class, 'decline'])->name('approvals.decline');
 
         Route::get('/products/labels', [ProductController::class, 'labels'])->name('products.labels');
         Route::get('/products/batch', [ProductController::class, 'batch'])->name('products.batch');

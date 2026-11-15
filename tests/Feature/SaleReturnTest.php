@@ -237,16 +237,20 @@ class SaleReturnTest extends TestCase
         $this->giveBack($sale, ['item-'.$this->line($sale, $cola)->id => ['qty' => 1, 'restock' => 1]])->assertSessionHasErrors('lines');
     }
 
-    public function test_cashiers_cannot_return_items(): void
+    public function test_a_cashier_cannot_return_items_without_the_owners_approval(): void
     {
         $cola = $this->product('Cola', 75);
         $cashier = User::create(['name' => 'Liza', 'username' => 'liza', 'role' => 'cashier', 'is_active' => true, 'password' => 'secret123']);
         $this->actingAs($cashier);
         $sale = $this->sell([['product_id' => $cola->id, 'quantity' => 1]]);
 
-        $this->get(route('sales.return', $sale))->assertForbidden();
-        $this->giveBack($sale, ['item-'.$this->line($sale, $cola)->id => ['qty' => 1, 'restock' => 1]])->assertForbidden();
-        $this->get(route('sales.show', $sale))->assertOk()->assertDontSee('Return items');
+        $this->get(route('sales.return', $sale))->assertOk()->assertSee("Send to the owner's phone", false);
+        $this->giveBack($sale, ['item-'.$this->line($sale, $cola)->id => ['qty' => 1, 'restock' => 1]])->assertSessionHasErrors('approval_via');
+        $this->giveBack($sale, ['item-'.$this->line($sale, $cola)->id => ['qty' => 1, 'restock' => 1]], 'Changed their mind', ['approval_via' => 'here'])
+            ->assertSessionHasErrors('credential');
+
+        $this->assertDatabaseCount('sale_returns', 0);
+        $this->assertEquals(99, $cola->fresh()->stock);
     }
 
     public function test_the_sale_page_the_receipt_and_the_sales_list_show_the_return(): void

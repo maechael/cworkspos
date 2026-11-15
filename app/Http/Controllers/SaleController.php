@@ -6,7 +6,9 @@ use App\Models\Basket;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\Approvals;
 use App\Services\Inventory;
+use App\Services\SaleVoids;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +38,7 @@ class SaleController extends Controller
             'props' => [
                 'cashier' => $request->user()->name,
                 'isSupervisor' => $request->user()->isAdmin(),
+                'voidsAllowed' => Approvals::allowed(),
                 'storeName' => config('app.name'),
                 'style' => $current['style'],
                 'styleName' => $style['name'],
@@ -231,9 +234,9 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         $this->authorizeView($request, $sale);
-        $sale->load('items.product.unit', 'user', 'returns.items', 'returns.user');
+        $sale->load('items.product.unit', 'user', 'returns.items', 'returns.user', 'returns.approver', 'voider', 'voidApprover');
 
-        return view('sales.show', compact('sale'));
+        return view('sales.show', ['sale' => $sale, 'voidsAllowed' => Approvals::allowed()]);
     }
 
     public function receipt(Request $request, Sale $sale)
@@ -244,29 +247,85 @@ class SaleController extends Controller
         return view('sales.receipt', compact('sale'));
     }
 
-    public function void(Request $request, Sale $sale, Inventory $inventory)
+    /** A whole receipt number opens that sale, for a return or a void, whichever cashier sold it. */
+    public function find(Request $request)
     {
-        $request->validate(['reason' => 'nullable|string|max:255']);
+        $typed = strtoupper(preg_replace('/\s+/', '', (string) $request->query('receipt')));
+        $receipt = preg_match('/^\d{6}-\d{5}$/', $typed) ? 'OR-'.$typed : $typed;
+        $sale = $receipt !== '' ? Sale::where('receipt_no', $receipt)->first() : null;
+
+        if (! $sale) {
+            return back()->with('error', $receipt === '' ? 'Type the receipt number, such as OR-261115-00012.' : "No receipt {$receipt} was found. Check the number on the receipt.");
+        }
+
+        return redirect($sale->linkFor('sales.show', $request->user()));
+    }
+
+    /** A cashier's page for voiding a sale with the owner's approval. The owner voids straight from the sale page. */
+    public function voidForm(Request $request, Sale $sale)
+    {
+        $this->authorizeView($request, $sale);
+        if ($request->user()->isAdmin()) {
+            return redirect()->route('sales.show', $sale);
+        }
+        if ($sale->status !== 'completed') {
+            return redirect($sale->linkFor('sales.show', $request->user()))->with('error', 'This sale is already voided.');
+        }
+        $sale->load('items', 'user');
+
+        return view('sales.void', ['sale' => $sale, 'action' => $sale->linkFor('sales.void', $request->user()), 'voidsAllowed' => Approvals::allowed()]);
+    }
+
+    public function void(Request $request, Sale $sale, SaleVoids $voids, Approvals $approvals)
+    {
+        $this->authorizeView($request, $sale);
+        $user = $request->user();
+        $data = $request->validate([
+            'reason' => $user->isAdmin() ? 'nullable|string|max:200' : 'required|string|max:200',
+            'approval_via' => $user->isAdmin() ? 'nullable' : 'required|in:here,remote',
+            'credential' => 'nullable|string|max:255|required_if:approval_via,here',
+        ], [
+            'reason.required' => 'Write why the sale is being voided.',
+            'credential.required_if' => "Ask the owner to type their password or passkey, or send it to the owner's phone.",
+        ]);
 
         if ($sale->status !== 'completed') {
             return back()->with('error', 'This sale is already voided.');
         }
 
-        DB::transaction(function () use ($sale, $inventory, $request) {
-            $sale->load('items');
-            foreach ($sale->items as $item) {
-                $product = Product::lockForUpdate()->find($item->product_id);
-                $inventory->restoreLots($product, (float) $item->quantity);
-                $inventory->move($product, (float) $item->quantity, 'void', $sale->receipt_no, $request->user()->id);
-            }
-            $sale->update(['status' => 'voided', 'voided_at' => now()]);
-        });
+        if ($user->isAdmin()) {
+            $voids->void($sale, $user->id);
 
-        return back()->with('success', "Sale {$sale->receipt_no} was voided and the items were returned to stock.");
+            return back()->with('success', "Sale {$sale->receipt_no} was voided and the items were returned to stock.");
+        }
+
+        $summary = "Void sale {$sale->receipt_no} (".peso($sale->total).')';
+        $payload = ['reason' => $data['reason']];
+
+        if ($data['approval_via'] === 'remote') {
+            $approval = $approvals->request('sale_void', $user, $sale, $summary, (float) $sale->total, $payload);
+
+            return redirect()->route('approvals.show', $approval);
+        }
+
+        [$owner, $via] = $approvals->checkCredential($data['credential'], $user, 'Sale void', ['receipt' => $sale->receipt_no]);
+        $voids->void($sale, $user->id, $owner->id);
+        $approvals->recordCounter('sale_void', $user, $owner, $via, $sale, $summary, (float) $sale->total, $payload, 'The sale was voided and its items are back in stock.');
+
+        return redirect($sale->linkFor('sales.show', $user))->with('success', "Sale {$sale->receipt_no} was voided, approved by {$owner->name}. The items are back in stock.");
+    }
+
+    /**
+     * The owner sees every sale; a cashier sees their own, and any other one they opened by its receipt number
+     * (a signed link from find()).
+     */
+    public static function canOpen(Request $request, Sale $sale): bool
+    {
+        return $request->user()->isAdmin() || $sale->user_id === $request->user()->id || $request->hasValidSignature();
     }
 
     private function authorizeView(Request $request, Sale $sale): void
     {
-        abort_unless($request->user()->isAdmin() || $sale->user_id === $request->user()->id, 403);
+        abort_unless(self::canOpen($request, $sale), 403);
     }
 }

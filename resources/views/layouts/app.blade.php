@@ -46,7 +46,10 @@
     $is = fn (string ...$patterns) => request()->routeIs(...$patterns);
     $setupLink = fn (string $label, string $type) => [$label, route('master.index', $type), request()->is('setup/'.$type), $type];
 
-    // [label, url, is this the current page, icon]
+    // Cashiers' voids and returns waiting for the owner's answer
+    $approvalCount = $user->isAdmin() ? \App\Models\ApprovalRequest::waiting()->count() : 0;
+
+    // [label, url, is this the current page, icon, optional count]
     $groups = $user->isAdmin()
         ? [
             'Overview' => [
@@ -56,6 +59,7 @@
             'Operations' => [
                 ['Cashier (POS)', route('pos.index'), $is('pos.*'), 'pos'],
                 ['Sales', route('sales.index'), $is('sales.*'), 'sales'],
+                ['Approvals', route('approvals.index'), $is('approvals.*'), 'approvals', $approvalCount],
                 ['Receive delivery', route('deliveries.index'), $is('deliveries.*'), 'deliveries'],
                 ['Stock count', route('stock-counts.index'), $is('stock-counts.*'), 'counts'],
             ],
@@ -108,6 +112,7 @@
         'sun' => 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4',
         'bell' => 'M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15zM10 21.5h4',
         'search' => 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+        'approvals' => 'M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6zM9 12l2 2 4-4',
     ];
     $icon = fn (string $name, string $class = 'h-5 w-5') => '<svg class="'.$class.' shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'.$icons[$name].'"/></svg>';
 
@@ -115,7 +120,7 @@
     $showTopBar = ! $fullWidth;
     $lowStockCount = $showTopBar && $user->isAdmin() ? \App\Models\Product::lowStock()->count() : 0;
     $expiringCount = $showTopBar && $user->isAdmin() ? \App\Models\DeliveryItem::expiringSoon()->count() : 0;
-    $alertCount = $lowStockCount + $expiringCount;
+    $alertCount = $lowStockCount + $expiringCount + $approvalCount;
 @endphp
 <div class="flex min-h-screen">
     {{-- Below 1024px this is the slide-in menu, opened with the ☰ button in the small top bar --}}
@@ -146,8 +151,9 @@
             @foreach ($groups as $group => $links)
                 <div class="nav-group">{{ $group }}</div>
                 <div class="flex flex-col gap-0.5">
-                    @foreach ($links as [$label, $href, $active, $name])
-                        <a href="{{ $href }}" title="{{ $label }}" @if ($active) aria-current="page" @endif class="nav-link {{ $active ? 'active' : '' }}">{!! $icon($name) !!}<span class="nav-text whitespace-nowrap">{{ $label }}</span></a>
+                    @foreach ($links as $link)
+                        @php [$label, $href, $active, $name] = $link; $count = $link[4] ?? 0; @endphp
+                        <a href="{{ $href }}" title="{{ $label }}{{ $count ? " ($count waiting)" : '' }}" @if ($active) aria-current="page" @endif class="nav-link relative {{ $active ? 'active' : '' }}">{!! $icon($name) !!}<span class="nav-text whitespace-nowrap">{{ $label }}</span>@if ($count)<span class="nav-count ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">{{ $count }}<span class="sr-only"> waiting</span></span>@endif</a>
                     @endforeach
                 </div>
             @endforeach
@@ -222,6 +228,9 @@
                             <div class="bar-menu w-64">
                                 @if ($alertCount === 0)
                                     <p class="px-3 py-2 text-slate-500">Nothing needs attention.</p>
+                                @endif
+                                @if ($approvalCount)
+                                    <a href="{{ route('approvals.index') }}"><span><b>{{ $approvalCount }}</b> waiting for your approval</span></a>
                                 @endif
                                 @if ($lowStockCount)
                                     <a href="{{ route('products.index', ['filter' => 'low']) }}"><span><b>{{ $lowStockCount }}</b> low on stock</span></a>

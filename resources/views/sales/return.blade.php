@@ -1,11 +1,11 @@
 @extends('layouts.app', ['title' => 'Return items: '.$sale->receipt_no])
 
 @section('actions')
-    <a href="{{ route('sales.show', $sale) }}" class="btn btn-secondary">Back to the sale</a>
+    <a href="{{ $backUrl }}" class="btn btn-secondary">Back to the sale</a>
 @endsection
 
 @section('content')
-    <form id="return-form" method="POST" action="{{ route('sales.return.store', $sale) }}"
+    <form id="return-form" method="POST" action="{{ $action }}"
           data-subtotal="{{ (float) $sale->subtotal }}" data-total="{{ (float) $sale->total }}">
         @csrf
         <p class="mb-3 text-sm text-slate-500">
@@ -107,9 +107,14 @@
                     </select>
                 </div>
             </div>
+            @if ($needsApproval)
+                <div class="mt-4 border-t border-slate-100 pt-4">
+                    @include('partials.approval-choice', ['submit' => 'Approve and save return', 'submitRemote' => "Send to the owner's phone"])
+                </div>
+            @endif
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p id="return-preview" role="status" class="min-h-5 text-sm font-medium text-slate-700"></p>
-                <button class="btn btn-primary">Save return</button>
+                <button class="btn btn-primary" data-approval-submit @disabled($needsApproval && ! $voidsAllowed)>Save return</button>
             </div>
         </div>
     </form>

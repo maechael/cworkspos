@@ -53,11 +53,16 @@ export function WeightDialog({ product, onConfirm, onCancel }) {
 // Hides the typing without being a real password box, which would make the browser offer to save the supervisor's password on the cashier's PC
 const CAN_MASK_TEXT = typeof CSS !== 'undefined' && CSS.supports?.('-webkit-text-security', 'disc');
 
-/** A supervisor types their account password or passkey before lines come off the sale. */
-export function VoidApprovalDialog({ request, onApproved, onCancel }) {
+/**
+ * Lines come off the sale only with the owner's OK: their password or passkey typed here,
+ * or a request sent to the owner's phone that this dialog waits on. The owner can switch voids off entirely.
+ */
+export function VoidApprovalDialog({ request, onApproved, onCancel, allowed = true }) {
     const [credential, setCredential] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [off, setOff] = useState(!allowed);
+    const [waiting, setWaiting] = useState(null); // the request sent to the owner's phone
     const field = useRef();
     const { lines, clearAll } = request;
     const amount = round2(lines.reduce((s, l) => s + lineTotal(l), 0));
@@ -68,40 +73,122 @@ export function VoidApprovalDialog({ request, onApproved, onCancel }) {
         setError('Scan not added. Finish this first, then scan again.');
     });
 
+    const refused = (err) => {
+        beep(false);
+        if (err.response?.status === 423) setOff(true);
+        setError(errorMessage(err));
+    };
+
     const submit = async (e) => {
         e.preventDefault();
         if (!credential || saving) return;
         setSaving(true);
         setError(null);
         try {
-            await axios.post('/pos/void-approval', { credential, lines: lines.map(saleLine) });
+            await axios.post('/pos/void-approval', { credential, lines: lines.map(saleLine), clear_all: !!clearAll });
             onApproved();
         } catch (err) {
-            beep(false);
-            setError(errorMessage(err));
+            refused(err);
             setCredential('');
             setSaving(false);
             field.current?.focus();
         }
     };
 
+    const sendToPhone = async () => {
+        if (saving) return;
+        setSaving(true);
+        setError(null);
+        try {
+            const { data } = await axios.post('/approvals/ask', { type: clearAll ? 'clear_order' : 'line_void', lines: lines.map(saleLine) });
+            setWaiting(data);
+        } catch (err) {
+            refused(err);
+        }
+        setSaving(false);
+    };
+
+    // The owner may have switched voids off (or on) since this screen was opened
+    useEffect(() => {
+        axios.get('/approvals/allowed').then(({ data }) => setOff(!data.allowed)).catch(() => {});
+    }, []);
+
+    // Waits for the owner's answer
+    useEffect(() => {
+        if (!waiting) return undefined;
+        let stopped = false;
+        let timer;
+        const check = async () => {
+            try {
+                const { data } = await axios.get(`/approvals/${waiting.id}`, { headers: { Accept: 'application/json' } });
+                if (stopped) return;
+                if (data.status === 'approved') { beep(); onApproved(); return; }
+                if (data.status !== 'pending') {
+                    beep(false);
+                    setWaiting(null);
+                    setError(data.status === 'declined' ? `The owner declined. ${data.message && data.message !== 'The owner declined.' ? data.message : ''}`.trim() : data.message || 'No answer.');
+                    return;
+                }
+            } catch { /* try again */ }
+            if (!stopped) timer = setTimeout(check, 2000);
+        };
+        timer = setTimeout(check, 2000);
+        return () => { stopped = true; clearTimeout(timer); };
+    }, [waiting?.id]);
+
+    const cancel = () => {
+        if (waiting) axios.post(`/approvals/${waiting.id}/cancel`).catch(() => {});
+        onCancel();
+    };
+
+    const what = clearAll
+        ? `Clear the whole order: ${lines.length} line${lines.length === 1 ? '' : 's'}, ${peso(amount)}.`
+        : `Void ${lines[0].name} × ${qtyText(lines[0].qty)}, ${peso(amount)}.`;
+
+    if (off) {
+        return (
+            <Modal onClose={onCancel}>
+                <h2 className="text-lg font-semibold">Voids are turned off</h2>
+                <p className="mt-1 text-sm text-slate-500">{what}</p>
+                <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                    The owner has turned off voids and returns for now, so this line stays on the sale. Ask the owner to turn them back on.
+                </p>
+                <div className="mt-4 flex justify-end"><button type="button" className="btn btn-primary" onClick={onCancel}>OK</button></div>
+            </Modal>
+        );
+    }
+
+    if (waiting) {
+        return (
+            <Modal onClose={cancel}>
+                <h2 className="text-lg font-semibold">Waiting for the owner…</h2>
+                <p className="mt-1 text-sm text-slate-500">{what}</p>
+                <div role="status" className="mt-4 flex items-center gap-3 rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Sent to the owner's phone. This closes by itself when they answer.
+                </div>
+                <div className="mt-4 flex justify-end"><button type="button" className="btn btn-secondary" onClick={cancel}>Cancel the request</button></div>
+            </Modal>
+        );
+    }
+
     return (
         <Modal onClose={saving ? undefined : onCancel}>
             <h2 className="text-lg font-semibold">Supervisor approval needed</h2>
-            <p className="mt-1 text-sm text-slate-500">
-                {clearAll
-                    ? `Clear the whole order: ${lines.length} line${lines.length === 1 ? '' : 's'}, ${peso(amount)}.`
-                    : `Void ${lines[0].name} × ${qtyText(lines[0].qty)}, ${peso(amount)}.`}
-            </p>
+            <p className="mt-1 text-sm text-slate-500">{what}</p>
             <form onSubmit={submit} autoComplete="off" className="mt-4">
                 <label htmlFor="void-approval-credential" className="label">Supervisor's password or passkey</label>
                 <input id="void-approval-credential" ref={field} autoFocus type={CAN_MASK_TEXT ? 'text' : 'password'} value={credential} readOnly={saving}
                     onChange={(e) => { setCredential(e.target.value); setError(null); }} autoComplete={CAN_MASK_TEXT ? 'off' : 'new-password'} autoCapitalize="off" autoCorrect="off" spellCheck={false}
                     style={CAN_MASK_TEXT ? { WebkitTextSecurity: 'disc' } : undefined} className="input text-lg" />
                 {error && <p role="alert" className="mt-2 text-sm font-medium text-red-600">{error}</p>}
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
                     <button type="button" className="btn btn-secondary" disabled={saving} onClick={onCancel}>Cancel</button>
                     <button className="btn btn-primary" disabled={!credential || saving}>{saving ? 'Checking…' : clearAll ? 'Approve and clear' : 'Approve void'}</button>
+                </div>
+                <div className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-500">
+                    Owner not here?{' '}
+                    <button type="button" className="tap font-medium text-brand-700 hover:underline" disabled={saving} onClick={sendToPhone}>Send to the owner's phone</button>
                 </div>
             </form>
         </Modal>

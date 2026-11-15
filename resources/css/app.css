@@ -136,6 +136,8 @@
     [data-sidebar='collapsed'] .app-sidebar .nav-text { display: none; }
     [data-sidebar='collapsed'] .app-sidebar .nav-link { justify-content: center; padding-inline: 0; }
     [data-sidebar='collapsed'] .app-sidebar .nav-link.active::after { display: none; }
+    /* A waiting count sits on the icon's corner when only icons show */
+    [data-sidebar='collapsed'] .app-sidebar .nav-count { position: absolute; top: 0.15rem; right: 0.35rem; height: 1rem; min-width: 1rem; padding-inline: 0.25rem; font-size: 10px; }
     [data-sidebar='collapsed'] .app-sidebar .nav-group { height: 1px; margin: 0.75rem 0.25rem; padding: 0; overflow: hidden; color: transparent; background: var(--color-slate-200); }
     [data-sidebar='collapsed'] .app-sidebar .brand-link { justify-content: center; padding-inline: 0; }
 }

@@ -24,43 +24,76 @@ class SaleReturns
     public function __construct(private Inventory $inventory) {}
 
     /**
+     * Works out a return without saving anything: the refund and a one-line summary, for an approval request.
+     * Throws the same errors as process() would.
+     *
+     * @return array{refund: float, summary: string}
+     */
+    public function preview(Sale $sale, array $lines): array
+    {
+        $sale = Sale::with('items.product.unit')->findOrFail($sale->id); // a copy, so nothing on the caller's sale changes
+        $plan = $this->plan($sale, $lines);
+
+        return ['refund' => $plan['refund'], 'summary' => 'Return '.implode(', ', $plan['what']).', refund '.peso($plan['refund'])];
+    }
+
+    /**
+     * What a return would do to the sale. Changes the sale's lines in memory only; process() saves them.
+     *
+     * @return array{parts: array, what: string[], refund: float, subtotal: float, total: float}
+     */
+    private function plan(Sale $sale, array $lines): array
+    {
+        if ($sale->status !== 'completed') {
+            throw ValidationException::withMessages(['lines' => 'This sale was voided, so nothing can be returned.']);
+        }
+
+        $parts = []; // [SaleItem, qty back, amount back, restock, basket name]
+        $what = [];  // "2 Sardines", "1 Gift Pack"
+        foreach ($sale->receiptLines() as $line) {
+            $want = round((float) ($lines[$line['key']]['qty'] ?? 0), 3);
+            if ($want <= 0) {
+                continue;
+            }
+            $restock = filter_var($lines[$line['key']]['restock'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+            if ($line['basket']) {
+                array_push($parts, ...$this->basketParts($line, $want, $restock));
+                $what[] = $this->qty($want).' '.$line['basket'];
+            } else {
+                $parts[] = $this->itemPart($line['item'], $want, $restock);
+                $what[] = $this->qty($want).' '.$line['item']->product_name;
+            }
+        }
+
+        if (! $parts) {
+            throw ValidationException::withMessages(['lines' => 'Enter how many came back for at least one item.']);
+        }
+
+        // The sale's discount is shared out: the refund is the same share of the total as the items are of the subtotal
+        $gross = round(array_sum(array_column($parts, 2)), 2);
+        $allBack = $sale->items->every(fn ($i) => (float) $i->quantity <= self::EPS);
+        $refund = $allBack ? (float) $sale->total
+            : ((float) $sale->subtotal > 0 ? round($gross * (float) $sale->total / (float) $sale->subtotal, 2) : 0.0);
+
+        return [
+            'parts' => $parts,
+            'what' => $what,
+            'refund' => $refund,
+            'subtotal' => round((float) $sale->subtotal - $gross, 2),
+            'total' => round((float) $sale->total - $refund, 2),
+        ];
+    }
+
+    /**
      * @param  array<string, array{qty?: mixed, restock?: mixed}>  $lines  keyed like Sale::receiptLines()
      */
-    public function process(Sale $sale, array $lines, string $reason, ?string $note, string $method, int $userId): SaleReturn
+    public function process(Sale $sale, array $lines, string $reason, ?string $note, string $method, int $userId, ?int $approvedBy = null): SaleReturn
     {
-        return DB::transaction(function () use ($sale, $lines, $reason, $note, $method, $userId) {
+        return DB::transaction(function () use ($sale, $lines, $reason, $note, $method, $userId, $approvedBy) {
             $sale = Sale::lockForUpdate()->findOrFail($sale->id);
-            if ($sale->status !== 'completed') {
-                throw ValidationException::withMessages(['lines' => 'This sale was voided, so nothing can be returned.']);
-            }
             $sale->load('items.product.unit');
-
-            $parts = []; // [SaleItem, qty back, amount back, restock, basket name]
-            foreach ($sale->receiptLines() as $line) {
-                $want = round((float) ($lines[$line['key']]['qty'] ?? 0), 3);
-                if ($want <= 0) {
-                    continue;
-                }
-                $restock = filter_var($lines[$line['key']]['restock'] ?? false, FILTER_VALIDATE_BOOLEAN);
-
-                if ($line['basket']) {
-                    array_push($parts, ...$this->basketParts($line, $want, $restock));
-                } else {
-                    $parts[] = $this->itemPart($line['item'], $want, $restock);
-                }
-            }
-
-            if (! $parts) {
-                throw ValidationException::withMessages(['lines' => 'Enter how many came back for at least one item.']);
-            }
-
-            // The sale's discount is shared out: the refund is the same share of the total as the items are of the subtotal
-            $gross = round(array_sum(array_column($parts, 2)), 2);
-            $subtotal = round((float) $sale->subtotal - $gross, 2);
-            $allBack = $sale->items->every(fn ($i) => (float) $i->quantity <= self::EPS);
-            $refund = $allBack ? (float) $sale->total
-                : ((float) $sale->subtotal > 0 ? round($gross * (float) $sale->total / (float) $sale->subtotal, 2) : 0.0);
-            $total = round((float) $sale->total - $refund, 2);
+            ['parts' => $parts, 'refund' => $refund, 'subtotal' => $subtotal, 'total' => $total] = $this->plan($sale, $lines);
 
             $sale->update([
                 'subtotal' => max($subtotal, 0),
@@ -73,6 +106,7 @@ class SaleReturns
                 'return_no' => 'TMP-'.uniqid(),
                 'sale_id' => $sale->id,
                 'user_id' => $userId,
+                'approved_by' => $approvedBy,
                 'reason' => $reason,
                 'note' => $note,
                 'refund' => $refund,

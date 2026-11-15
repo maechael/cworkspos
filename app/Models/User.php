@@ -62,11 +62,19 @@ class User extends Authenticatable
     /** Only an active admin can approve a voided line, with their account password or their passkey. */
     public function canApproveVoidWith(string $credential): bool
     {
+        return $this->approvalMethod($credential) !== null;
+    }
+
+    /** 'password' or 'passkey' when this active admin's credential matches, otherwise null. */
+    public function approvalMethod(string $credential): ?string
+    {
         if (! $this->isAdmin() || ! $this->is_active) {
-            return false;
+            return null;
+        }
+        if (Hash::check($credential, $this->password)) {
+            return 'password';
         }
 
-        return Hash::check($credential, $this->password)
-            || ($this->void_passkey && Hash::check($credential, $this->void_passkey));
+        return $this->void_passkey && Hash::check($credential, $this->void_passkey) ? 'passkey' : null;
     }
 }

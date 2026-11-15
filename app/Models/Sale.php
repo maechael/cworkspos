@@ -8,7 +8,7 @@ class Sale extends Model
 {
     protected $fillable = [
         'receipt_no', 'user_id', 'subtotal', 'discount', 'total',
-        'amount_paid', 'change', 'refunded', 'payment_method', 'status', 'voided_at',
+        'amount_paid', 'change', 'refunded', 'payment_method', 'status', 'voided_at', 'voided_by', 'void_approved_by',
     ];
 
     protected $casts = [
@@ -24,6 +24,29 @@ class Sale extends Model
     public function returns()
     {
         return $this->hasMany(SaleReturn::class);
+    }
+
+    public function voider()
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    public function voidApprover()
+    {
+        return $this->belongsTo(User::class, 'void_approved_by');
+    }
+
+    /**
+     * A link to one of this sale's pages for this person. A cashier opening another cashier's sale
+     * (found by its receipt number, for a return) gets a signed link that works for 2 hours.
+     */
+    public function linkFor(string $route, User $viewer, array $query = []): string
+    {
+        $params = ['sale' => $this] + $query;
+
+        return $viewer->isAdmin() || $this->user_id === $viewer->id
+            ? route($route, $params)
+            : \Illuminate\Support\Facades\URL::temporarySignedRoute($route, now()->addHours(2), $params);
     }
 
     /** A completed sale with something still left to bring back. */

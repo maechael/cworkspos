@@ -12,7 +12,7 @@ class SaleReturn extends Model
     /** Reasons where the item usually can't be sold again, so "back on the shelf" starts unticked. */
     public const NOT_SELLABLE = ['Damaged or defective', 'Expired'];
 
-    protected $fillable = ['return_no', 'sale_id', 'user_id', 'reason', 'note', 'refund', 'refund_method'];
+    protected $fillable = ['return_no', 'sale_id', 'user_id', 'approved_by', 'reason', 'note', 'refund', 'refund_method'];
 
     protected $casts = ['refund' => 'decimal:2'];
 
@@ -24,6 +24,11 @@ class SaleReturn extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function items()
