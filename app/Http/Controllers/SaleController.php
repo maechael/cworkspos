@@ -27,7 +27,7 @@ class SaleController extends Controller
         $current = PosSettingsController::current();
         $preview = false;
 
-        if ($request->user()->isAdmin() && isset($styles[$request->query('style')])) {
+        if ($request->user()->isSuperAdmin() && isset($styles[$request->query('style')])) {
             $current['style'] = $request->query('style');
             $current['scheme'] = isset(config('pos.schemes')[$request->query('scheme')]) ? $request->query('scheme') : $current['scheme'];
             $preview = true;
@@ -47,7 +47,7 @@ class SaleController extends Controller
                 'styleName' => $style['name'],
                 'scheme' => $current['scheme'],
                 'preview' => $preview,
-                'settingsUrl' => $request->user()->isAdmin() ? route('settings.pos') : null,
+                'settingsUrl' => $request->user()->isSuperAdmin() ? route('settings.pos') : null,
             ],
         ]);
     }

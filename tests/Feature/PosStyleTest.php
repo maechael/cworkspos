@@ -27,12 +27,16 @@ class PosStyleTest extends TestCase
 
         $this->artisan('migrate');
         $this->admin = User::create(['name' => 'Owner', 'username' => 'owner', 'email' => 'owner@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'secret123']);
+        $this->super = User::create(['name' => 'Setup', 'username' => 'setup', 'role' => 'admin', 'is_active' => true, 'password' => 'secret123']);
+        $this->super->forceFill(['is_super_admin' => true])->save();
     }
+
+    private User $super;
 
     /** The props the cashier screen would be mounted with. */
     private function propsFrom(string $url): array
     {
-        $response = $this->actingAs($this->admin)->get($url)->assertOk();
+        $response = $this->actingAs($this->super)->get($url)->assertOk();
 
         return $response->viewData('props');
     }
@@ -69,12 +73,12 @@ class PosStyleTest extends TestCase
 
     public function test_saving_accepts_a_green_and_refuses_an_old_color(): void
     {
-        $this->actingAs($this->admin)
+        $this->actingAs($this->super)
             ->putJson(route('settings.pos.update'), ['business_type' => 'grocery', 'style' => 'scanpro', 'scheme' => 'leaf-green'])
             ->assertOk()
             ->assertJsonPath('current.scheme', 'leaf-green');
 
-        $this->actingAs($this->admin)
+        $this->actingAs($this->super)
             ->putJson(route('settings.pos.update'), ['business_type' => 'grocery', 'style' => 'scanpro', 'scheme' => 'daylight'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('scheme');
@@ -82,7 +86,55 @@ class PosStyleTest extends TestCase
 
     public function test_the_settings_page_opens(): void
     {
-        $this->actingAs($this->admin)->get(route('settings.pos'))->assertOk();
+        $this->actingAs($this->super)->get(route('settings.pos'))->assertOk();
+    }
+
+    public function test_only_the_super_admin_has_pos_style_and_scanner_test(): void
+    {
+        $this->actingAs($this->super)->get('/dashboard')->assertOk()->assertSee('POS style')->assertSee('Scanner test');
+        $this->actingAs($this->super)->get(route('settings.scanner'))->assertOk();
+
+        // The owner: no links, no pages, no saving, no preview links on the cashier screen
+        $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertDontSee('POS style')->assertDontSee('Scanner test');
+        $this->actingAs($this->admin)->get(route('settings.pos'))->assertForbidden();
+        $this->actingAs($this->admin)->get(route('settings.scanner'))->assertForbidden();
+        $this->actingAs($this->admin)
+            ->putJson(route('settings.pos.update'), ['business_type' => 'grocery', 'style' => 'kiosk', 'scheme' => 'leaf-green'])
+            ->assertForbidden();
+        $props = $this->actingAs($this->admin)->get('/pos?style=kiosk')->assertOk()->viewData('props');
+        $this->assertFalse($props['preview']);
+        $this->assertNull($props['settingsUrl']);
+
+        $this->actingAs($this->cashier())->get(route('settings.scanner'))->assertForbidden();
+    }
+
+    public function test_the_owner_cannot_see_or_change_the_super_admin_account(): void
+    {
+        $this->actingAs($this->admin)->get(route('users.index'))->assertOk()->assertDontSee('value="setup"', false)->assertSee('value="owner"', false);
+        $this->actingAs($this->admin)
+            ->put(route('users.update', $this->super), ['name' => 'X', 'username' => 'setup', 'role' => 'cashier', 'is_active' => '1'])
+            ->assertNotFound();
+        $this->assertSame('admin', $this->super->fresh()->role);
+
+        $this->actingAs($this->super)->get(route('users.index'))->assertOk()->assertSee('Super admin');
+    }
+
+    public function test_the_command_makes_and_removes_a_super_admin(): void
+    {
+        $this->artisan('user:super-admin', ['username' => 'dev', '--name' => 'Developer'])
+            ->expectsQuestion('Password for the new account (at least 6 characters)', 'devpass1')
+            ->expectsQuestion('Type it again', 'devpass1')
+            ->assertSuccessful();
+        $dev = User::where('username', 'dev')->first();
+        $this->assertTrue($dev->isSuperAdmin());
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('devpass1', $dev->password));
+
+        $this->artisan('user:super-admin', ['username' => 'owner'])->assertSuccessful();
+        $this->assertTrue($this->admin->fresh()->isSuperAdmin());
+
+        $this->artisan('user:super-admin', ['username' => 'owner', '--remove' => true])->assertSuccessful();
+        $this->assertFalse($this->admin->fresh()->isSuperAdmin());
+        $this->assertTrue($this->admin->fresh()->isAdmin());
     }
 
     public function test_only_the_cashier_screen_has_the_menu_controls(): void

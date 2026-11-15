@@ -28,7 +28,10 @@
                 @foreach ($users as $u)
                     <tr>
                         <form method="POST" action="{{ route('users.update', $u) }}" id="user-{{ $u->id }}">@csrf @method('PUT')</form>
-                        <td><input name="name" value="{{ $u->name }}" form="user-{{ $u->id }}" class="input py-1"></td>
+                        <td>
+                            <input name="name" value="{{ $u->name }}" form="user-{{ $u->id }}" class="input py-1">
+                            @if ($u->is_super_admin)<span class="badge mt-1 bg-amber-100 text-amber-800" title="Sees POS style and Scanner test. Hidden from the owner's list.">Super admin</span>@endif
+                        </td>
                         <td><input name="username" value="{{ $u->username }}" form="user-{{ $u->id }}" class="input py-1"></td>
                         <td>
                             <select name="role" form="user-{{ $u->id }}" class="input py-1">

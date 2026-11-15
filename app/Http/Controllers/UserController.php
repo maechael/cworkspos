@@ -8,9 +8,14 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('users.index', ['users' => User::orderBy('name')->get()]);
+        // The super admin account is hidden from the owner, so it can't be renamed, locked out or demoted by mistake
+        $users = User::orderBy('name')
+            ->when(! $request->user()->isSuperAdmin(), fn ($q) => $q->where('is_super_admin', false))
+            ->get();
+
+        return view('users.index', ['users' => $users]);
     }
 
     public function store(Request $request)
@@ -28,6 +33,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        abort_if($user->is_super_admin && ! $request->user()->isSuperAdmin(), 404);
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users')->ignore($user)],

@@ -88,9 +88,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/expiry', [ReportController::class, 'expiry'])->name('reports.expiry');
         Route::get('/reports/movements', [ReportController::class, 'movements'])->name('reports.movements');
 
-        Route::get('/settings/pos', [PosSettingsController::class, 'edit'])->name('settings.pos');
-        Route::put('/settings/pos', [PosSettingsController::class, 'update'])->name('settings.pos.update');
-        Route::view('/settings/scanner', 'settings.scanner')->name('settings.scanner');
+        // Setup pages: the super admin only, not the owner
+        Route::middleware('super')->group(function () {
+            Route::get('/settings/pos', [PosSettingsController::class, 'edit'])->name('settings.pos');
+            Route::put('/settings/pos', [PosSettingsController::class, 'update'])->name('settings.pos.update');
+            Route::view('/settings/scanner', 'settings.scanner')->name('settings.scanner');
+        });
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');

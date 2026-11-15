@@ -70,11 +70,12 @@
                 $setupLink('Units', 'units'),
                 $setupLink('Suppliers', 'suppliers'),
             ],
-            'System' => [
+            'System' => array_merge($user->isSuperAdmin() ? [
                 ['POS style', route('settings.pos'), $is('settings.pos*'), 'style'],
                 ['Scanner test', route('settings.scanner'), $is('settings.scanner'), 'scanner'],
+            ] : [], [
                 ['User accounts', route('users.index'), $is('users.*'), 'users'],
-            ],
+            ]),
         ]
         : [
             'Operations' => [

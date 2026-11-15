@@ -51,12 +51,19 @@ class User extends Authenticatable
             'password' => 'hashed',
             'void_passkey' => 'hashed',
             'is_active' => 'boolean',
+            'is_super_admin' => 'boolean',
         ];
     }
 
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /** The setup account: everything an admin has, plus POS style and Scanner test. Made with `php artisan user:super-admin`. */
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin() && $this->is_super_admin;
     }
 
     /** Only an active admin can approve a voided line, with their account password or their passkey. */

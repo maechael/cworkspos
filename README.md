@@ -140,6 +140,16 @@ Open http://localhost:8000 and sign in.
 
 The starting passwords are in `database/seeders/DatabaseSeeder.php`. **Change both right after the first sign-in** (Owner: System → User accounts), because anyone who can read this code knows them.
 
+#### Super admin (setup account)
+
+**POS style** and **Scanner test** are for setting the store up, so only the super admin sees them. The owner does not. The super admin can do everything the owner can, and it is hidden from the owner's User accounts list so it can't be changed by mistake. No super admin exists until you make one; the password is typed at the prompt, so it is never stored in the code:
+
+```bash
+php artisan user:super-admin setup              # new account called "setup": asks for its password
+php artisan user:super-admin arnold             # or make an existing account the super admin
+php artisan user:super-admin setup --remove     # back to a normal admin
+```
+
 ### Using it on phones and tablets in the store
 
 Start the app so other devices on the same Wi-Fi can reach it, and find this computer's address:
@@ -231,7 +241,7 @@ On a staging copy, `php artisan store:clear --demo` empties it and adds fresh sa
 
 ## Barcode scanner
 
-Any USB or wireless scanner in keyboard mode works with no driver. Open **Setup → Scanner test** and scan an item to check it. That page doesn't change stock or record a sale.
+Any USB or wireless scanner in keyboard mode works with no driver. Sign in as the super admin, open **System → Scanner test** and scan an item to check it. That page doesn't change stock or record a sale.
 
 On the cashier, receiving and stock count screens, a scan works wherever the cursor is:
 

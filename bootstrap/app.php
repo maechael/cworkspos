@@ -11,7 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->alias(['role' => \App\Http\Middleware\EnsureRole::class]);
+        $middleware->alias([
+            'role' => \App\Http\Middleware\EnsureRole::class,
+            'super' => \App\Http\Middleware\EnsureSuperAdmin::class,
+        ]);
         $middleware->append(\App\Http\Middleware\NoIndex::class);
         $middleware->redirectUsersTo(fn () => auth()->user()?->isAdmin() ? route('dashboard') : route('pos.index'));
     })
