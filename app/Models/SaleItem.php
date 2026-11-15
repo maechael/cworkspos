@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class SaleItem extends Model
 {
     protected $fillable = [
-        'sale_id', 'product_id', 'product_name', 'quantity', 'unit_price', 'unit_cost', 'line_total',
+        'sale_id', 'product_id', 'product_name', 'quantity', 'returned_qty', 'unit_price', 'unit_cost', 'line_total',
         'free_qty', 'promo', 'basket_id', 'basket_name', 'basket_qty',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:3',
+        'returned_qty' => 'decimal:3',
         'unit_price' => 'decimal:2',
         'unit_cost' => 'decimal:2',
         'line_total' => 'decimal:2',

@@ -23,6 +23,8 @@ class ClearStoreData extends Command
 
     /** Children before parents, so the order also works where foreign keys can't be switched off. */
     private const TABLES = [
+        'sale_return_items' => 'returned item lines',
+        'sale_returns' => 'returns',
         'sale_items' => 'sale lines',
         'sales' => 'sales',
         'basket_items' => 'basket items',

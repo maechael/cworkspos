@@ -29,7 +29,7 @@
     @if ($sale->status === 'voided')<div class="c b big">*** VOIDED ***</div>@endif
     <hr>
     <table>
-        @foreach ($sale->receiptLines() as $line)
+        @foreach ($sale->keptLines() as $line)
             @if ($line['basket'])
                 <tr><td colspan="2">{{ $line['basket'] }}</td></tr>
                 <tr>
@@ -62,7 +62,21 @@
         <tr class="b big"><td>TOTAL</td><td class="r">{{ number_format($sale->total, 2) }}</td></tr>
         <tr><td>{{ strtoupper($sale->payment_method) }}</td><td class="r">{{ number_format($sale->amount_paid, 2) }}</td></tr>
         <tr><td>Change</td><td class="r">{{ number_format($sale->change, 2) }}</td></tr>
+        @if ($sale->refunded > 0)<tr class="b"><td>Refunded</td><td class="r">{{ number_format($sale->refunded, 2) }}</td></tr>@endif
     </table>
+    @if ($sale->returns->isNotEmpty())
+        <hr>
+        <div class="b">RETURNED</div>
+        <table>
+            @foreach ($sale->returns as $return)
+                <tr><td colspan="2">{{ $return->return_no }} {{ $return->created_at->format('m/d/Y') }}</td></tr>
+                @foreach ($return->items as $ri)
+                    <tr><td colspan="2">&nbsp;- {{ qty($ri->quantity) }} {{ $ri->product_name }}</td></tr>
+                @endforeach
+                <tr><td>&nbsp;Refund ({{ strtoupper($return->refund_method) }})</td><td class="r">-{{ number_format($return->refund, 2) }}</td></tr>
+            @endforeach
+        </table>
+    @endif
     <hr>
     @php $saved = $sale->items->sum(fn ($i) => (float) $i->free_qty * (float) $i->unit_price); @endphp
     @if ($saved > 0)<div class="c b">You saved {{ number_format($saved, 2) }} on promos</div>@endif

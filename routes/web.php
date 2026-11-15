@@ -9,6 +9,7 @@ use App\Http\Controllers\PosSettingsController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\StockCountController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoidApprovalController;
@@ -41,6 +42,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
 
         Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
+        Route::get('/sales/{sale}/return', [SaleReturnController::class, 'create'])->name('sales.return');
+        Route::post('/sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales.return.store');
 
         Route::get('/products/labels', [ProductController::class, 'labels'])->name('products.labels');
         Route::get('/products/batch', [ProductController::class, 'batch'])->name('products.batch');

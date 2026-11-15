@@ -16,6 +16,14 @@ Laravel 12 (Blade) with React screens for the cashier, receiving and stock count
 - **Dashboard**: a greeting with what needs attention, then charts for transactions per day and top sellers, each with a table view. A recent sales table for today, this week or this month, with filter, paging and CSV export, and a side rail with this week's deliveries and expiring lots, items expiring soon and low stock.
 - **Look of the admin pages**: a blue brand with a sidebar that collapses to icons and a light or dark theme, both remembered per device (buttons in the top bar). Colors are set in `resources/css/app.css`.
 - **Reports**: sales by day, category and product; inventory value; expiring items; full stock movement history. Inventory value also takes dates (last 30 days by default): it shows the profit made in those dates, how long each item's stock lasts, and an estimate of the profit today's stock should make in the rest of the month and the next 30 days at that selling speed.
+- **Returns** (open a sale → Return items, owner only): when a shopper brings something back, enter how many of each item came back, whether it can go back on the shelf, a reason, and how the money was given back (cash, GCash or card). The page shows the refund before saving.
+  - **What changes:** the sale is edited down to what the shopper kept, so the sales reports, profit and best sellers count only what was really sold.
+  - **The record:** each return is kept on the sale with a number (RT-…), the date and who did it, and it prints on the receipt.
+  - **Promos:** free promo items come back first, so returning 1 of a Buy 1 Take 1 pair refunds nothing.
+  - **Baskets:** they come back by the whole basket.
+  - **Discounts:** a discount on the sale is shared out, so the refund is what was really paid.
+  - **Stock:** items marked "back on the shelf" return to stock; damaged or expired ones stay out.
+  - **Code:** `app/Services/SaleReturns.php`.
 - **Users**: Owner/Admin sees everything. Cashier sees only the POS and their own sales, all in the POS's green with their own name at the top of the menu. Admin can void a sale (items go back to stock).
 
 Stock leaves the earliest-expiring delivery first.
@@ -183,7 +191,7 @@ It lists what will go and asks you to type the database name before deleting any
 
 **What is deleted:**
 - every product and barcode
-- every sale and receipt
+- every sale, receipt and return
 - every delivery, and the expiry dates they recorded
 - baskets
 - stock counts

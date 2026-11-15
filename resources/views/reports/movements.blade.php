@@ -8,7 +8,7 @@
             <label class="label">Type</label>
             <select name="type" class="input">
                 <option value="">All</option>
-                @foreach (['delivery' => 'Delivery', 'sale' => 'Sale', 'void' => 'Void', 'count' => 'Count adjustment', 'adjust' => 'Stock adjustment', 'opening' => 'Opening stock'] as $v => $l)
+                @foreach (['delivery' => 'Delivery', 'sale' => 'Sale', 'void' => 'Void', 'return' => 'Return','count' => 'Count adjustment', 'adjust' => 'Stock adjustment', 'opening' => 'Opening stock'] as $v => $l)
                     <option value="{{ $v }}" @selected(request('type') === $v)>{{ $l }}</option>
                 @endforeach
             </select>

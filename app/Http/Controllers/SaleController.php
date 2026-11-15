@@ -207,7 +207,7 @@ class SaleController extends Controller
         $totals = (clone $query)->completed()
             ->selectRaw('COUNT(*) as count, COALESCE(SUM(total),0) as total, COALESCE(SUM(CASE WHEN payment_method = ? THEN total ELSE 0 END),0) as cash', ['cash'])
             ->first();
-        $sales = $query->latest('id')->paginate(30);
+        $sales = $query->withCount('returns')->latest('id')->paginate(30);
 
         return response()->json([
             'data' => $sales->getCollection()->map(fn ($s) => [
@@ -218,6 +218,7 @@ class SaleController extends Controller
                 'payment' => $s->payment_method,
                 'total' => (float) $s->total,
                 'voided' => $s->status === 'voided',
+                'returned' => (float) $s->refunded > 0 || $s->returns_count > 0,
             ]),
             'totals' => ['count' => (int) $totals->count, 'total' => (float) $totals->total, 'cash' => (float) $totals->cash],
             'page' => $sales->currentPage(),
@@ -230,7 +231,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale)
     {
         $this->authorizeView($request, $sale);
-        $sale->load('items.product.unit', 'user');
+        $sale->load('items.product.unit', 'user', 'returns.items', 'returns.user');
 
         return view('sales.show', compact('sale'));
     }
@@ -238,7 +239,7 @@ class SaleController extends Controller
     public function receipt(Request $request, Sale $sale)
     {
         $this->authorizeView($request, $sale);
-        $sale->load('items.product.unit', 'user');
+        $sale->load('items.product.unit', 'user', 'returns.items');
 
         return view('sales.receipt', compact('sale'));
     }

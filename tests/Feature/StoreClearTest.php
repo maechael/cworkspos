@@ -60,7 +60,7 @@ class StoreClearTest extends TestCase
 
         $this->artisan('store:clear', ['--force' => true])->assertSuccessful();
 
-        foreach (['products', 'product_barcodes', 'sales', 'sale_items', 'deliveries', 'delivery_items', 'stock_movements', 'stock_counts', 'baskets', 'basket_items'] as $table) {
+        foreach (['products', 'product_barcodes', 'sales', 'sale_items', 'sale_returns', 'sale_return_items','deliveries', 'delivery_items', 'stock_movements', 'stock_counts', 'baskets', 'basket_items'] as $table) {
             $this->assertSame(0, DB::table($table)->count(), "$table should be empty");
         }
         $this->assertSame(2, User::count());

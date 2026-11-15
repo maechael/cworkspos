@@ -84,9 +84,10 @@ export default function Sales({ from: startFrom, to: startTo, isAdmin, cashiers 
                                 <td>{s.cashier}</td>
                                 <td className="text-xs uppercase">{s.payment}</td>
                                 <td className="text-right font-semibold">{peso(s.total)}</td>
-                                <td>{s.voided
+                                <td className="whitespace-nowrap">{s.voided
                                     ? <span className="badge bg-red-100 text-red-700">Voided</span>
-                                    : <span className="badge bg-brand-100 text-brand-700">Paid</span>}</td>
+                                    : <span className="badge bg-brand-100 text-brand-700">Paid</span>}
+                                    {s.returned && <span className="badge ml-1 bg-amber-100 text-amber-800">Returned</span>}</td>
                                 <td className="text-right"><a href={`${baseUrl}/sales/${s.id}`} className="tap text-sm text-brand-700 hover:underline">View</a></td>
                             </tr>
                         ))}

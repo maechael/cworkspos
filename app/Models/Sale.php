@@ -8,7 +8,7 @@ class Sale extends Model
 {
     protected $fillable = [
         'receipt_no', 'user_id', 'subtotal', 'discount', 'total',
-        'amount_paid', 'change', 'payment_method', 'status', 'voided_at',
+        'amount_paid', 'change', 'refunded', 'payment_method', 'status', 'voided_at',
     ];
 
     protected $casts = [
@@ -17,8 +17,20 @@ class Sale extends Model
         'total' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'change' => 'decimal:2',
+        'refunded' => 'decimal:2',
         'voided_at' => 'datetime',
     ];
+
+    public function returns()
+    {
+        return $this->hasMany(SaleReturn::class);
+    }
+
+    /** A completed sale with something still left to bring back. */
+    public function canReturn(): bool
+    {
+        return $this->status === 'completed' && $this->items->contains(fn ($i) => (float) $i->quantity > 0);
+    }
 
     public function user()
     {
@@ -32,7 +44,8 @@ class Sale extends Model
 
     /**
      * The lines as the customer bought them: an item on its own, or a basket with the items inside it.
-     * Each entry is ['basket' => null, 'item' => SaleItem] or ['basket' => name, 'qty', 'total', 'items' => [...]].
+     * Each entry is ['key', 'basket' => null, 'item' => SaleItem] or ['key', 'basket' => name, 'qty', 'total', 'items' => [...]].
+     * The key ("item-5", or "basket-" and its first item's id) names the line on the return form.
      */
     public function receiptLines(): array
     {
@@ -40,14 +53,14 @@ class Sale extends Model
         $baskets = [];
         foreach ($this->items as $item) {
             if (! $item->basket_name) {
-                $lines[] = ['basket' => null, 'item' => $item];
+                $lines[] = ['key' => 'item-'.$item->id, 'basket' => null, 'item' => $item];
 
                 continue;
             }
             $key = ($item->basket_id ?? 'x').'|'.$item->basket_name;
             if (! isset($baskets[$key])) {
                 $baskets[$key] = count($lines);
-                $lines[] = ['basket' => $item->basket_name, 'qty' => (float) $item->basket_qty, 'total' => 0.0, 'items' => []];
+                $lines[] = ['key' => 'basket-'.$item->id, 'basket' => $item->basket_name, 'qty' => (float) $item->basket_qty, 'total' => 0.0, 'items' => []];
             }
             $lines[$baskets[$key]]['total'] += (float) $item->line_total;
             $lines[$baskets[$key]]['items'][] = $item;
@@ -56,10 +69,17 @@ class Sale extends Model
         return $lines;
     }
 
-    /** Items scanned, with each basket counted once. */
+    /** The lines the shopper still has: anything brought back in full is left out. */
+    public function keptLines(): array
+    {
+        return array_values(array_filter($this->receiptLines(),
+            fn ($line) => $line['basket'] ? $line['qty'] > 0 : (float) $line['item']->quantity > 0));
+    }
+
+    /** Items scanned, with each basket counted once, not counting any brought back in full. */
     public function lineCount(): int
     {
-        return count($this->receiptLines());
+        return count($this->keptLines());
     }
 
     public function scopeCompleted($query)
