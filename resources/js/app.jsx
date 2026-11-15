@@ -15,6 +15,7 @@ import ProductBarcodes from './components/ProductBarcodes';
 import BasketItems from './components/BasketItems';
 import ApprovalsPanel from './components/ApprovalsPanel';
 import { startTableCards } from './tableCards';
+import { startSearchSuggest } from './searchSuggest';
 
 // Blade pages mount React screens with <div data-react="Pos" data-props='{...}'>
 const screens = { Pos, Receiving, StockCount, BarcodeLabels, Dashboard, Products, Sales, PosSettings, ScannerTest, BatchAdd, ProductBarcodes, BasketItems, ApprovalsPanel };
@@ -27,3 +28,4 @@ document.querySelectorAll('[data-react]').forEach((el) => {
 });
 
 startTableCards();
+startSearchSuggest();

@@ -189,7 +189,7 @@
 
                 @if ($user->isAdmin())
                     <form action="{{ route('products.index') }}" class="relative w-full max-w-md" role="search">
-                        <input id="top-search" name="q" type="search" value="" aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off"
+                        <input id="top-search" name="q" type="search" value="" data-suggest aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off"
                                class="w-full rounded-xl border border-slate-200 bg-white py-2 pr-20 pl-4 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none">
                         <kbd class="absolute top-1/2 right-9 -translate-y-1/2 rounded bg-slate-100 px-1.5 py-0.5 font-sans text-[11px] text-slate-500">Ctrl K</kbd>
                         <span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-500">{!! $icon('search', 'h-4 w-4') !!}</span>
@@ -275,13 +275,13 @@
                 <div class="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
                     {{-- Tablets have room for the search box itself; phones open it under the bar --}}
                     <form action="{{ route('products.index') }}" class="relative hidden w-56 md:block" role="search">
-                        <input name="q" type="search" aria-label="Search products" placeholder="Search products…" autocomplete="off" class="input pr-9">
+                        <input name="q" type="search" aria-label="Search products" placeholder="Search products…" autocomplete="off" class="input pr-9" data-suggest>
                         <span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-500">{!! $icon('search', 'h-4 w-4') !!}</span>
                     </form>
                     <details class="md:hidden" data-menu data-autofocus>
                         <summary class="bar-btn" aria-label="Search products">{!! $icon('search') !!}</summary>
                         <form action="{{ route('products.index') }}" role="search" class="bar-menu fixed inset-x-2 top-14 mt-0 p-2">
-                            <input name="q" type="search" aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off" class="input">
+                            <input name="q" type="search" aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off" class="input" data-suggest>
                         </form>
                     </details>
                     <details class="relative" data-menu>
