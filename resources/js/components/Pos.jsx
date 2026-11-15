@@ -17,7 +17,7 @@ export const STYLES = { scanpro: ScanPro, cafe: CafeTiles, table: TableService, 
 const PAY_KEYS = { scanpro: 'F12', counter: 'F10' };
 
 /** The cashier screen. The owner picks the style and color scheme under Setup → POS style. */
-export default function Pos({ cashier, userId, draft = null, isSupervisor, voidsAllowed = true, storeName, style = 'scanpro', styleName, scheme, preview, settingsUrl }) {
+export default function Pos({ cashier, userId, draft = null, isSupervisor, autoApprove = false, storeName, style = 'scanpro', styleName, scheme, preview, settingsUrl }) {
     // Each cashier's open order is kept (in this browser and on the server) through a refresh or a brownout.
     // Table Service already keeps every table's order itself; a style preview keeps nothing.
     const storageKey = userId && style !== 'table' && !preview ? `pos-order:${userId}` : null;
@@ -48,7 +48,7 @@ export default function Pos({ cashier, userId, draft = null, isSupervisor, voids
                 <WeightDialog product={pos.weighing} onCancel={() => { pos.setWeighing(null); pos.focusScan(); }}
                     onConfirm={(kg) => { pos.addToCart(pos.weighing, kg); pos.setWeighing(null); pos.focusScan(); }} />
             )}
-            {pos.voidRequest && <VoidApprovalDialog request={pos.voidRequest} allowed={voidsAllowed} onApproved={pos.approveVoid} onCancel={pos.cancelVoid} />}
+            {pos.voidRequest && <VoidApprovalDialog request={pos.voidRequest} auto={autoApprove} onApproved={pos.approveVoid} onCancel={pos.cancelVoid} />}
             {pos.paying && (
                 <PayDialog subtotal={pos.subtotal} cart={pos.cart} storeName={storeName} cashier={cashier}
                     onCancel={() => { pos.setPaying(false); pos.focusScan(); }}

@@ -32,7 +32,9 @@ class ApprovalController extends Controller
             ->update(['status' => 'expired', 'message' => 'Nobody answered within '.ApprovalRequest::EXPIRES_MINUTES.' minutes.']);
 
         return [
-            'allowed' => Approvals::allowed(),
+            'auto' => Approvals::autoApprove(),
+            // What went through while the owner was away, to check when they're back
+            'auto_recent' => ApprovalRequest::where('decided_via', 'auto')->where('status', 'approved')->where('decided_at', '>', now()->subDay())->count(),
             'waiting' => ApprovalRequest::with('requester', 'sale')->waiting()->oldest('id')->get()->map(fn (ApprovalRequest $a) => [
                 'id' => $a->id,
                 'type' => $a->typeLabel(),
@@ -51,12 +53,13 @@ class ApprovalController extends Controller
 
     public function toggle(Request $request, Approvals $approvals)
     {
-        $on = $request->validate(['allowed' => 'required|boolean'])['allowed'];
-        $declined = $approvals->setAllowed((bool) $on, $request->user());
+        $on = (bool) $request->validate(['auto' => 'required|boolean'])['auto'];
+        $approved = $approvals->setAuto($on, $request->user());
 
-        $text = $on ? 'Voids and returns are on. Cashiers can ask for your approval again.'
-            : 'Voids and returns are off. Cashiers can\'t void or return anything until you turn them back on.'
-                .($declined ? " {$declined} waiting request".($declined === 1 ? ' was' : 's were').' declined.' : '');
+        $text = $on
+            ? 'Auto-approve is on. Cashiers\' voids and returns go through without asking you, and each one is listed in the history.'
+                .($approved ? " {$approved} waiting request".($approved === 1 ? ' was' : 's were').' approved.' : '')
+            : 'Auto-approve is off. Cashiers need your OK again.';
 
         return $request->wantsJson() ? response()->json(self::panelData() + ['notice' => $text]) : back()->with('success', $text);
     }
@@ -95,10 +98,10 @@ class ApprovalController extends Controller
             : back()->with($error ? 'error' : 'success', $text);
     }
 
-    /** Whether voids and returns are switched on right now (the cashier screen asks before offering them). */
-    public function allowed()
+    /** Whether auto-approve is on right now (the cashier screen asks before showing the approval dialog). */
+    public function mode()
     {
-        return response()->json(['allowed' => Approvals::allowed()]);
+        return response()->json(['auto' => Approvals::autoApprove()]);
     }
 
     /** Cashier screen: ask the owner, from anywhere, to approve taking lines off the order. */

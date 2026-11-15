@@ -3,7 +3,7 @@
 @section('actions')
     @php $viewer = auth()->user(); @endphp
     <a href="{{ $sale->linkFor('sales.receipt', $viewer, ['print' => 1]) }}" target="_blank" class="btn btn-secondary">Print receipt</a>
-    @if ($sale->canReturn() && ($viewer->isAdmin() || $voidsAllowed))
+    @if ($sale->canReturn())
         <a href="{{ $sale->linkFor('sales.return', $viewer) }}" class="btn btn-secondary">Return items</a>
     @endif
     @if ($sale->status === 'completed')
@@ -12,20 +12,19 @@
                 @csrf
                 <button class="btn btn-danger">Void sale</button>
             </form>
-        @elseif ($voidsAllowed)
+        @else
             <a href="{{ $sale->linkFor('sales.void.form', $viewer) }}" class="btn btn-danger">Void sale</a>
         @endif
     @endif
 @endsection
 
 @section('content')
-    @if (! $viewer->isAdmin() && ! $voidsAllowed && $sale->status === 'completed')
-        <div class="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">{{ \App\Services\Approvals::OFF_MESSAGE }} Returns and voids open again when the owner turns them on.</div>
-    @endif
     @if ($sale->status === 'voided')
         <div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             @php
-                $who = ($sale->voider ? ' by '.$sale->voider->name : '').($sale->voidApprover ? ', approved by '.$sale->voidApprover->name : '');
+                // A cashier's void with no approver went through on auto-approve
+                $who = ($sale->voider ? ' by '.$sale->voider->name : '')
+                    .($sale->voidApprover ? ', approved by '.$sale->voidApprover->name : ($sale->voider && ! $sale->voider->isAdmin() ? ', auto-approved' : ''));
             @endphp
             This sale was voided on {{ $sale->voided_at->format('M j, Y g:i A') }}{{ $who }}.
         </div>
@@ -79,7 +78,7 @@
                             <tr>
                                 <td class="whitespace-nowrap">
                                     <span class="font-medium">{{ $return->return_no }}</span>
-                                    <div class="text-xs text-slate-500">{{ $return->created_at->format('M j, Y g:i A') }}, by {{ $return->user->name }}@if ($return->approver), approved by {{ $return->approver->name }}@endif</div>
+                                    <div class="text-xs text-slate-500">{{ $return->created_at->format('M j, Y g:i A') }}, by {{ $return->user->name }}@if ($return->approver), approved by {{ $return->approver->name }}@elseif (! $return->user->isAdmin()), auto-approved @endif</div>
                                 </td>
                                 <td>
                                     <ul class="text-sm">

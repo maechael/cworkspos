@@ -69,9 +69,10 @@ export default function ApprovalsPanel({ initial, compact = false }) {
     };
 
     const toggle = () => {
-        const turnOff = data.allowed;
-        if (turnOff && data.waiting.length && !window.confirm(`Turn off voids and returns? The ${data.waiting.length} waiting request${data.waiting.length === 1 ? '' : 's'} will be declined.`)) return;
-        post('/approvals/switch', { allowed: !turnOff }, 'switch');
+        const turnOn = !data.auto;
+        const n = data.waiting.length;
+        if (turnOn && n && !window.confirm(`Turn on auto-approve? The ${n} waiting request${n === 1 ? '' : 's'} will be approved now too.`)) return;
+        post('/approvals/switch', { auto: turnOn }, 'switch');
     };
 
     const askToNotify = async () => {
@@ -88,19 +89,25 @@ export default function ApprovalsPanel({ initial, compact = false }) {
                         Approvals{waiting.length > 0 && <span className="badge ml-2 bg-red-100 text-red-700">{waiting.length} waiting</span>}
                     </h2>
                     <p className="text-sm text-slate-500">
-                        {data.allowed
-                            ? "Cashiers' voids and returns need your OK: your password at the counter, or a tap here."
-                            : "Voids and returns are off. Cashiers can't void or return anything until you turn them on."}
+                        {data.auto
+                            ? "Auto-approve is on: cashiers' voids and returns go through without asking you. Turn it off when you're back."
+                            : "Cashiers' voids and returns need your OK: your password at the counter, or a tap here. Asleep or away? Turn on auto-approve."}
                     </p>
                 </div>
-                <button type="button" role="switch" aria-checked={data.allowed} disabled={busy === 'switch'} onClick={toggle}
+                <button type="button" role="switch" aria-checked={data.auto} disabled={busy === 'switch'} onClick={toggle}
                     className="flex min-h-10 items-center gap-3 rounded-full border border-slate-200 py-1 pr-4 pl-1 text-sm font-medium">
-                    <span className={`relative h-7 w-12 rounded-full transition-colors ${data.allowed ? 'bg-brand-600' : 'bg-slate-300'}`}>
-                        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${data.allowed ? 'left-6' : 'left-1'}`} />
+                    <span className={`relative h-7 w-12 rounded-full transition-colors ${data.auto ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${data.auto ? 'left-6' : 'left-1'}`} />
                     </span>
-                    Voids and returns: {data.allowed ? 'On' : 'Off'}
+                    Auto-approve: {data.auto ? 'On' : 'Off'}
                 </button>
             </div>
+            {data.auto_recent > 0 && (
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    {data.auto_recent} void{data.auto_recent === 1 ? '' : 's'} or return{data.auto_recent === 1 ? '' : 's'} went through on auto-approve in the last 24 hours.{' '}
+                    <a href={`${baseUrl}/approvals`} className="tap font-medium underline">Check them</a>
+                </p>
+            )}
 
             {notice?.text && (
                 <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm font-medium ${notice.error ? 'bg-red-50 text-red-700' : 'bg-brand-50 text-brand-700'}`}>{notice.text}</p>

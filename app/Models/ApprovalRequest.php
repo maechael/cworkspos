@@ -68,7 +68,8 @@ class ApprovalRequest extends Model
 
     public function viaLabel(): ?string
     {
-        return ['remote' => "from the owner's login", 'password' => 'with their password at the counter', 'passkey' => 'with their passkey at the counter'][$this->decided_via] ?? null;
+        return ['remote' => "from the owner's login", 'password' => 'with their password at the counter', 'passkey' => 'with their passkey at the counter',
+            'auto' => 'automatically: auto-approve was on'][$this->decided_via] ?? null;
     }
 
     /** What the requester's screen needs to know. */
@@ -82,7 +83,7 @@ class ApprovalRequest extends Model
             'status' => $this->status,
             'summary' => $this->summary,
             'amount' => (float) $this->amount,
-            'decided_by' => $this->decider?->name,
+            'decided_by' => $this->decided_via === 'auto' ? 'auto-approved' : $this->decider?->name,
             'message' => $this->message,
         ];
     }

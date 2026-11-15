@@ -68,9 +68,9 @@ class ApprovalsTest extends TestCase
         ];
     }
 
-    private function switchOff(): void
+    private function autoApprove()
     {
-        $this->actingAs($this->owner)->post(route('approvals.switch'), ['allowed' => 0])->assertSessionHas('success');
+        return $this->actingAs($this->owner)->post(route('approvals.switch'), ['auto' => 1])->assertSessionHas('success');
     }
 
     // ---- At the counter ----
@@ -144,7 +144,7 @@ class ApprovalsTest extends TestCase
 
         // The owner sees it on the dashboard and approves it
         $this->actingAs($this->owner)->getJson(route('approvals.index'))->assertJsonPath('waiting.0.summary', 'Return 2 Cola 1.5L, refund ₱150.00')
-            ->assertJsonPath('waiting.0.cashier', 'Liza')->assertJsonPath('allowed', true);
+            ->assertJsonPath('waiting.0.cashier', 'Liza')->assertJsonPath('auto', false);
         $this->postJson(route('approvals.approve', $approval))->assertOk()->assertJsonCount(0, 'waiting')
             ->assertJsonPath('notice', fn ($n) => str_contains($n, 'RT-261115-00001'));
 
@@ -230,40 +230,60 @@ class ApprovalsTest extends TestCase
 
     // ---- The owner's switch ----
 
-    public function test_switched_off_cashiers_cannot_void_or_return_either_way(): void
+    public function test_with_auto_approve_on_a_line_void_goes_through_at_once_and_is_kept_on_record(): void
     {
-        $sale = $this->sale();
-        $this->switchOff();
+        $this->autoApprove();
 
-        $this->actingAs($this->cashier)->postJson('/pos/void-approval', ['credential' => 'owner-password', 'lines' => [['product_id' => $this->cola->id, 'quantity' => 1]]])
-            ->assertStatus(423)->assertJsonPath('message', 'The owner has turned off voids and returns for now.');
-        $this->postJson(route('approvals.store'), ['type' => 'line_void', 'lines' => [['product_id' => $this->cola->id, 'quantity' => 1]]])->assertStatus(423);
-        $this->getJson(route('approvals.allowed'))->assertJsonPath('allowed', false);
+        $this->actingAs($this->cashier)->getJson(route('approvals.mode'))->assertJsonPath('auto', true);
+        $this->postJson(route('approvals.store'), ['type' => 'line_void', 'lines' => [['product_id' => $this->cola->id, 'quantity' => 1]]])
+            ->assertCreated()->assertJsonPath('status', 'approved')->assertJsonPath('decided_by', 'auto-approved');
 
-        $this->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'here', 'credential' => 'owner-password']))->assertSessionHasErrors('credential');
-        $this->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'remote']))->assertSessionHasErrors('approval');
-        $this->post(route('sales.void', $sale), ['reason' => 'x', 'approval_via' => 'here', 'credential' => '4827'])->assertSessionHasErrors('credential');
-        $this->get(route('sales.show', $sale))->assertSee('turned off voids and returns')->assertDontSee('Return items');
-
-        $this->assertDatabaseCount('sale_returns', 0);
-        $this->assertSame('completed', $sale->fresh()->status);
-        $this->assertDatabaseCount('approval_requests', 0);
+        $this->assertDatabaseHas('approval_requests', ['type' => 'line_void', 'status' => 'approved', 'decided_via' => 'auto', 'decided_by' => null]);
+        $this->actingAs($this->owner)->getJson(route('approvals.index'))->assertJsonPath('auto', true)->assertJsonPath('auto_recent', 1);
+        $this->get(route('approvals.index'))->assertSee('Auto-approved');
     }
 
-    public function test_switching_off_declines_what_is_waiting_and_the_owner_can_still_act_and_turn_it_back_on(): void
+    public function test_with_auto_approve_on_a_return_and_a_sale_void_are_done_without_the_owner(): void
+    {
+        $sale = $this->sale();
+        $other = $this->sale();
+        $this->autoApprove();
+
+        $this->actingAs($this->cashier)->get(route('sales.return', $sale))->assertSee('Auto-approve is on');
+        $this->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'auto']))
+            ->assertRedirect(route('sales.show', $sale))->assertSessionHas('success', fn ($m) => str_contains($m, 'Auto-approved') && str_contains($m, 'RT-'));
+        $this->assertDatabaseHas('sale_returns', ['sale_id' => $sale->id, 'user_id' => $this->cashier->id, 'approved_by' => null]);
+        $this->get(route('sales.show', $sale))->assertSee('auto-approved');
+
+        $this->post(route('sales.void', $other), ['reason' => 'Wrong items', 'approval_via' => 'auto'])->assertSessionHas('success');
+        $this->assertSame('voided', $other->fresh()->status);
+        $this->get(route('sales.show', $other))->assertSee('by Liza, auto-approved');
+        $this->assertEquals(100 - 3 + 1, $this->cola->fresh()->stock); // 6 sold, 1 returned, 3 back from the void
+    }
+
+    public function test_turning_on_auto_approve_also_approves_what_is_waiting(): void
     {
         $sale = $this->sale();
         $this->actingAs($this->cashier)->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'remote']));
+        $this->assertSame('pending', ApprovalRequest::sole()->status);
 
-        $this->switchOff();
-        $this->assertSame('declined', ApprovalRequest::sole()->status);
+        $this->autoApprove()->assertSessionHas('success', fn ($m) => str_contains($m, '1 waiting request was approved'));
 
-        // The owner, logged in, is not held back by their own switch
-        $this->actingAs($this->owner)->post(route('sales.return.store', $sale), $this->returnForm($sale, []))->assertSessionHas('success');
+        $this->assertSame('approved', ApprovalRequest::sole()->status);
+        $this->assertDatabaseHas('sale_returns', ['sale_id' => $sale->id, 'approved_by' => null]);
+    }
 
-        $this->post(route('approvals.switch'), ['allowed' => 1]);
-        $this->actingAs($this->cashier)->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'here', 'credential' => 'owner-password']))
-            ->assertSessionHas('success');
+    public function test_turning_auto_approve_off_needs_the_owner_again(): void
+    {
+        $sale = $this->sale();
+        $this->autoApprove();
+        $this->actingAs($this->owner)->post(route('approvals.switch'), ['auto' => 0])->assertSessionHas('success', 'Auto-approve is off. Cashiers need your OK again.');
+
+        $this->actingAs($this->cashier)->getJson(route('approvals.mode'))->assertJsonPath('auto', false);
+        // A form still saying "auto" from before is only a request now, waiting for the owner
+        $this->post(route('sales.return.store', $sale), $this->returnForm($sale, ['approval_via' => 'auto']))->assertRedirect(route('approvals.show', ApprovalRequest::sole()));
+        $this->assertSame('pending', ApprovalRequest::sole()->status);
+        $this->assertDatabaseCount('sale_returns', 0);
     }
 
     // ---- Who can do what ----
@@ -275,7 +295,7 @@ class ApprovalsTest extends TestCase
 
         $this->actingAs($this->cashier)->postJson(route('approvals.approve', $id))->assertForbidden();
         $this->getJson(route('approvals.index'))->assertForbidden();
-        $this->post(route('approvals.switch'), ['allowed' => 0])->assertForbidden();
+        $this->post(route('approvals.switch'), ['auto' => 1])->assertForbidden();
         $this->actingAs($other)->getJson(route('approvals.show', $id))->assertForbidden();
         $this->postJson(route('approvals.cancel', $id))->assertForbidden();
     }

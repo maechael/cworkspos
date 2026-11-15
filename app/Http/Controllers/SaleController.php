@@ -41,7 +41,7 @@ class SaleController extends Controller
                 'userId' => $request->user()->id,
                 'draft' => $preview ? null : Cache::get(self::draftKey($request)),
                 'isSupervisor' => $request->user()->isAdmin(),
-                'voidsAllowed' => Approvals::allowed(),
+                'autoApprove' => Approvals::autoApprove(),
                 'storeName' => config('app.name'),
                 'style' => $current['style'],
                 'styleName' => $style['name'],
@@ -266,7 +266,7 @@ class SaleController extends Controller
         $this->authorizeView($request, $sale);
         $sale->load('items.product.unit', 'user', 'returns.items', 'returns.user', 'returns.approver', 'voider', 'voidApprover');
 
-        return view('sales.show', ['sale' => $sale, 'voidsAllowed' => Approvals::allowed()]);
+        return view('sales.show', ['sale' => $sale]);
     }
 
     public function receipt(Request $request, Sale $sale)
@@ -303,7 +303,7 @@ class SaleController extends Controller
         }
         $sale->load('items', 'user');
 
-        return view('sales.void', ['sale' => $sale, 'action' => $sale->linkFor('sales.void', $request->user()), 'voidsAllowed' => Approvals::allowed()]);
+        return view('sales.void', ['sale' => $sale, 'action' => $sale->linkFor('sales.void', $request->user()), 'autoApprove' => Approvals::autoApprove()]);
     }
 
     public function void(Request $request, Sale $sale, SaleVoids $voids, Approvals $approvals)
@@ -312,7 +312,7 @@ class SaleController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'reason' => $user->isAdmin() ? 'nullable|string|max:200' : 'required|string|max:200',
-            'approval_via' => $user->isAdmin() ? 'nullable' : 'required|in:here,remote',
+            'approval_via' => $user->isAdmin() ? 'nullable' : 'required|in:here,remote,auto',
             'credential' => 'nullable|string|max:255|required_if:approval_via,here',
         ], [
             'reason.required' => 'Write why the sale is being voided.',
@@ -332,10 +332,11 @@ class SaleController extends Controller
         $summary = "Void sale {$sale->receipt_no} (".peso($sale->total).')';
         $payload = ['reason' => $data['reason']];
 
-        if ($data['approval_via'] === 'remote') {
+        // Sent to the owner's phone, or auto-approved at once if the owner turned that on
+        if ($data['approval_via'] !== 'here') {
             $approval = $approvals->request('sale_void', $user, $sale, $summary, (float) $sale->total, $payload);
 
-            return redirect()->route('approvals.show', $approval);
+            return self::afterRequest($approval, $sale, $user);
         }
 
         [$owner, $via] = $approvals->checkCredential($data['credential'], $user, 'Sale void', ['receipt' => $sale->receipt_no]);
@@ -343,6 +344,16 @@ class SaleController extends Controller
         $approvals->recordCounter('sale_void', $user, $owner, $via, $sale, $summary, (float) $sale->total, $payload, 'The sale was voided and its items are back in stock.');
 
         return redirect($sale->linkFor('sales.show', $user))->with('success', "Sale {$sale->receipt_no} was voided, approved by {$owner->name}. The items are back in stock.");
+    }
+
+    /** After asking: done already (auto-approve), refused, or waiting for the owner's answer. */
+    public static function afterRequest(\App\Models\ApprovalRequest $approval, Sale $sale, User $user)
+    {
+        return match ($approval->status) {
+            'approved' => redirect($sale->linkFor('sales.show', $user))->with('success', 'Auto-approved (the owner is away). '.$approval->message),
+            'failed' => redirect($sale->linkFor('sales.show', $user))->with('error', 'It couldn\'t be done: '.$approval->message),
+            default => redirect()->route('approvals.show', $approval),
+        };
     }
 
     /**

@@ -24,7 +24,12 @@
                             $label = ['approved' => 'Approved', 'declined' => 'Declined', 'failed' => "Couldn't be done", 'cancelled' => 'Cancelled', 'expired' => 'No answer'][$a->status] ?? ucfirst($a->status);
                         @endphp
                         <span class="badge {{ $badge }}">{{ $label }}</span>
-                        @if ($a->decider)<div class="text-xs text-slate-500">by {{ $a->decider->name }} {{ $a->viaLabel() }}</div>@endif
+                        @if ($a->decided_via === 'auto')
+                            <span class="badge ml-1 bg-amber-100 text-amber-800">Auto-approved</span>
+                            <div class="text-xs text-slate-500">while auto-approve was on</div>
+                        @elseif ($a->decider)
+                            <div class="text-xs text-slate-500">by {{ $a->decider->name }} {{ $a->viaLabel() }}</div>
+                        @endif
                         @if ($a->message && $a->status !== 'approved')<div class="text-xs text-slate-500">{{ $a->message }}</div>@endif
                     </td>
                 </tr>

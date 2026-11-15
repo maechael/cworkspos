@@ -55,13 +55,14 @@ const CAN_MASK_TEXT = typeof CSS !== 'undefined' && CSS.supports?.('-webkit-text
 
 /**
  * Lines come off the sale only with the owner's OK: their password or passkey typed here,
- * or a request sent to the owner's phone that this dialog waits on. The owner can switch voids off entirely.
+ * or a request sent to the owner's phone that this dialog waits on.
+ * When the owner is away with auto-approve on, it is approved at once (and kept in the owner's history).
  */
-export function VoidApprovalDialog({ request, onApproved, onCancel, allowed = true }) {
+export function VoidApprovalDialog({ request, onApproved, onCancel, auto = false }) {
     const [credential, setCredential] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [off, setOff] = useState(!allowed);
+    const [autoing, setAutoing] = useState(auto);
     const [waiting, setWaiting] = useState(null); // the request sent to the owner's phone
     const field = useRef();
     const { lines, clearAll } = request;
@@ -75,7 +76,6 @@ export function VoidApprovalDialog({ request, onApproved, onCancel, allowed = tr
 
     const refused = (err) => {
         beep(false);
-        if (err.response?.status === 423) setOff(true);
         setError(errorMessage(err));
     };
 
@@ -95,22 +95,28 @@ export function VoidApprovalDialog({ request, onApproved, onCancel, allowed = tr
         }
     };
 
+    // Sends the request. With auto-approve on, the answer comes back approved straight away.
     const sendToPhone = async () => {
         if (saving) return;
         setSaving(true);
         setError(null);
         try {
             const { data } = await axios.post('/approvals/ask', { type: clearAll ? 'clear_order' : 'line_void', lines: lines.map(saleLine) });
-            setWaiting(data);
+            if (data.status === 'approved') { beep(); onApproved(); return; }
+            if (data.status === 'pending') setWaiting(data);
+            else { beep(false); setError(data.message || "It couldn't be approved."); }
         } catch (err) {
             refused(err);
         }
+        setAutoing(false);
         setSaving(false);
     };
 
-    // The owner may have switched voids off (or on) since this screen was opened
+    // Ask the server whether the owner has auto-approve on right now (it may have changed since this screen opened)
     useEffect(() => {
-        axios.get('/approvals/allowed').then(({ data }) => setOff(!data.allowed)).catch(() => {});
+        axios.get('/approvals/mode')
+            .then(({ data }) => { if (data.auto) { setAutoing(true); sendToPhone(); } else setAutoing(false); })
+            .catch(() => setAutoing(false));
     }, []);
 
     // Waits for the owner's answer
@@ -145,15 +151,15 @@ export function VoidApprovalDialog({ request, onApproved, onCancel, allowed = tr
         ? `Clear the whole order: ${lines.length} line${lines.length === 1 ? '' : 's'}, ${peso(amount)}.`
         : `Void ${lines[0].name} × ${qtyText(lines[0].qty)}, ${peso(amount)}.`;
 
-    if (off) {
+    if (autoing) {
         return (
-            <Modal onClose={onCancel}>
-                <h2 className="text-lg font-semibold">Voids are turned off</h2>
+            <Modal>
+                <h2 className="text-lg font-semibold">Auto-approving…</h2>
                 <p className="mt-1 text-sm text-slate-500">{what}</p>
-                <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                    The owner has turned off voids and returns for now, so this line stays on the sale. Ask the owner to turn them back on.
-                </p>
-                <div className="mt-4 flex justify-end"><button type="button" className="btn btn-primary" onClick={onCancel}>OK</button></div>
+                <div role="status" className="mt-4 flex items-center gap-3 rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                    <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    The owner is away and turned on auto-approve. This is kept in their history.
+                </div>
             </Modal>
         );
     }

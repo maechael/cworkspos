@@ -114,7 +114,7 @@
             @endif
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p id="return-preview" role="status" class="min-h-5 text-sm font-medium text-slate-700"></p>
-                <button class="btn btn-primary" data-approval-submit @disabled($needsApproval && ! $voidsAllowed)>Save return</button>
+                <button class="btn btn-primary" data-approval-submit>Save return</button>
             </div>
         </div>
     </form>

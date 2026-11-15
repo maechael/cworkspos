@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/sales/{sale}/void', [SaleController::class, 'void'])->name('sales.void');
     Route::get('/sales/{sale}/return', [SaleReturnController::class, 'create'])->name('sales.return');
     Route::post('/sales/{sale}/return', [SaleReturnController::class, 'store'])->name('sales.return.store');
-    Route::get('/approvals/allowed', [ApprovalController::class, 'allowed'])->name('approvals.allowed');
+    Route::get('/approvals/mode', [ApprovalController::class, 'mode'])->name('approvals.mode');
     Route::post('/approvals/ask', [ApprovalController::class, 'store'])->name('approvals.store');
     Route::get('/approvals/{approval}', [ApprovalController::class, 'show'])->whereNumber('approval')->name('approvals.show');
     Route::post('/approvals/{approval}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');

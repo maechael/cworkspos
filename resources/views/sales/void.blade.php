@@ -20,7 +20,7 @@
             @include('partials.approval-choice', ['submit' => 'Approve and void the sale', 'submitRemote' => "Send to the owner's phone"])
         </div>
         <div class="mt-4 flex justify-end">
-            <button class="btn btn-danger" data-approval-submit @disabled(! $voidsAllowed)>Void the sale</button>
+            <button class="btn btn-danger" data-approval-submit>Void the sale</button>
         </div>
     </form>
 @endsection

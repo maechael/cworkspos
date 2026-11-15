@@ -32,7 +32,7 @@ class SaleReturnController extends Controller
             'action' => $sale->linkFor('sales.return.store', $user),
             'backUrl' => $sale->linkFor('sales.show', $user),
             'needsApproval' => ! $user->isAdmin(),
-            'voidsAllowed' => Approvals::allowed(),
+            'autoApprove' => Approvals::autoApprove(),
         ]);
     }
 
@@ -48,7 +48,7 @@ class SaleReturnController extends Controller
             'reason' => ['required', Rule::in(SaleReturn::REASONS)],
             'note' => 'nullable|string|max:200|required_if:reason,Other',
             'refund_method' => 'required|in:cash,gcash,card',
-            'approval_via' => $user->isAdmin() ? 'nullable' : 'required|in:here,remote',
+            'approval_via' => $user->isAdmin() ? 'nullable' : 'required|in:here,remote,auto',
             'credential' => 'nullable|string|max:255|required_if:approval_via,here',
         ], [
             'note.required_if' => 'Write a short note when the reason is Other.',
@@ -63,12 +63,13 @@ class SaleReturnController extends Controller
         // Checked first, so a mistake on the form never uses up an approval or reaches the owner's phone
         $preview = $returns->preview($sale, $data['lines']);
 
-        if ($data['approval_via'] === 'remote') {
+        // Sent to the owner's phone, or auto-approved at once if the owner turned that on
+        if ($data['approval_via'] !== 'here') {
             $approval = $approvals->request('return', $user, $sale, $preview['summary'], $preview['refund'], [
                 'lines' => $data['lines'], 'reason' => $data['reason'], 'note' => $data['note'] ?? null, 'refund_method' => $data['refund_method'],
             ]);
 
-            return redirect()->route('approvals.show', $approval);
+            return SaleController::afterRequest($approval, $sale, $user);
         }
 
         [$owner, $via] = $approvals->checkCredential($data['credential'], $user, 'Return', ['receipt' => $sale->receipt_no, 'summary' => $preview['summary']]);

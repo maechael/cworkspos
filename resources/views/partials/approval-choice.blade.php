@@ -1,10 +1,13 @@
 {{--
     How a cashier gets the owner's approval on a return or void form.
-    Needs: $voidsAllowed, $submit (button text for the counter choice), $submitRemote (button text for the phone choice)
+    Needs: $autoApprove, $submit (button text for the counter choice), $submitRemote (button text for the phone choice)
 --}}
-@if (! $voidsAllowed)
-    <div class="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700" role="alert">
-        {{ \App\Services\Approvals::OFF_MESSAGE }} Ask the owner to turn them back on.
+@if ($autoApprove)
+    {{-- The owner is asleep or away and turned on auto-approve --}}
+    <input type="hidden" name="approval_via" value="auto">
+    <div class="rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800" role="status">
+        <span class="font-semibold">Auto-approve is on</span> (the owner is away). This is approved and saved right away,
+        and the owner sees it in their approvals history.
     </div>
 @else
     <fieldset data-approval-choice>
