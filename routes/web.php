@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BasketController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\LotController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\PosSettingsController;
 use App\Http\Controllers\ProductController;
@@ -29,6 +30,7 @@ Route::middleware('auth')->group(function () {
     // Cashier and admin
     Route::get('/pos', [SaleController::class, 'pos'])->name('pos.index');
     Route::post('/pos/sales', [SaleController::class, 'store'])->name('sales.store');
+    Route::put('/pos/draft', [SaleController::class, 'saveDraft'])->name('pos.draft');
     Route::post('/pos/void-approval', VoidApprovalController::class)->name('pos.void-approval');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/find', [SaleController::class, 'find'])->name('sales.find');
@@ -63,6 +65,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/batch', [ProductController::class, 'storeBatch'])->name('products.batch.store');
         Route::post('/products/{product}/barcodes', [ProductController::class, 'attachBarcode'])->name('products.barcodes.store');
         Route::post('/products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
+        Route::get('/lots/{lot}', [LotController::class, 'edit'])->name('lots.edit');
+        Route::put('/lots/{lot}/expiry', [LotController::class, 'updateExpiry'])->name('lots.expiry');
+        Route::post('/lots/{lot}/adjust', [LotController::class, 'adjust'])->name('lots.adjust');
         Route::resource('products', ProductController::class);
         Route::resource('baskets', BasketController::class)->except('show');
 

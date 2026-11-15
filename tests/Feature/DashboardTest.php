@@ -158,7 +158,7 @@ class DashboardTest extends TestCase
     {
         $this->sale('2026-11-03 09:00:00', 10);
         $this->actingAs($this->admin)->get('/dashboard')->assertOk()->assertSee('data-react="Dashboard"', false);
-        $this->get('/products/batch')->assertOk()->assertSee('Log out')->assertSee('Master data')->assertSee('Create');
+        $this->get('/products/batch')->assertOk()->assertSee('Log out')->assertSee('Master data')->assertDontSee('Create<svg', false); // the Create menu was removed on request
 
         $cashier = User::create(['name' => 'Cashier', 'username' => 'cash', 'email' => 'cash@example.test', 'role' => 'cashier', 'is_active' => true, 'password' => 'secret123']);
         $this->actingAs($cashier)->get('/dashboard')->assertForbidden();

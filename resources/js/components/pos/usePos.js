@@ -6,18 +6,51 @@ import { useScanner } from '../../useScanner';
 export { round2 };
 
 /**
+ * The order saved before the page closed (refresh, crash, brownout), if it is from the last 24 hours.
+ * Two copies: this browser's, and the server's (which reaches the disk at once). The newer one wins.
+ */
+const SAVED_FOR_MS = 24 * 60 * 60 * 1000;
+function readSaved(key, serverDraft) {
+    if (!key) return null;
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem(key)); } catch { /* none kept */ }
+    const saved = [local, serverDraft].filter((d) => d && d.savedAt).sort((a, b) => b.savedAt - a.savedAt)[0];
+    if (!saved || Date.now() - saved.savedAt > SAVED_FOR_MS) return null;
+    return { cart: saved.cart || [], held: (saved.held || []).map((h) => ({ ...h, at: new Date(h.at) })) };
+}
+
+/** Sends the order to the server; when the page is closing, in a way the browser finishes after it is gone. */
+function sendDraft(payload, closing = false) {
+    const token = document.querySelector('meta[name=csrf-token]')?.content;
+    const base = (document.querySelector('meta[name=base-url]')?.content || '').replace(/\/$/, '');
+    return fetch(`${base}/pos/draft`, {
+        method: 'PUT',
+        keepalive: closing,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+        body: JSON.stringify(payload),
+    }).catch(() => { /* offline for a moment: this browser's copy still has it */ });
+}
+
+/**
  * Cart, scanning, payment and keyboard shortcuts shared by every cashier style.
  * The styles only differ in how products are found and how the cart is drawn.
+ * With a storageKey, the open order and held sales are kept on this computer as they change,
+ * so a refresh, a crash or a brownout doesn't lose them. A paid order is never kept.
  */
-export function usePos({ payKey = 'F8', supervisor = false } = {}) {
-    const [cart, setCart] = useState([]);
+export function usePos({ payKey = 'F8', supervisor = false, storageKey = null, serverDraft = null } = {}) {
+    const saved = useRef(undefined);
+    if (saved.current === undefined) saved.current = readSaved(storageKey, serverDraft);
+    const latest = useRef(null); // the newest copy, for sending as the page closes
+    const sendTimer = useRef();
+    const [cart, setCart] = useState(() => saved.current?.cart || []);
     const [selected, setSelected] = useState(null);
     const [notice, setNotice] = useState(null);
     const [weighing, setWeighing] = useState(null); // product waiting for a kilo amount
     const [paying, setPaying] = useState(false);
     const [done, setDone] = useState(null);
     const [saleNo, setSaleNo] = useState(0); // bumps on each new sale so product lists reload stock
-    const [held, setHeld] = useState([]); // sales put on hold while serving the next customer
+    const [held, setHeld] = useState(() => saved.current?.held || []); // sales put on hold while serving the next customer
     const [undo, setUndo] = useState(null); // the lines the last removal took out, while the Undo toast is up
     const [voidRequest, setVoidRequest] = useState(null); // lines waiting for a supervisor's approval
     const scanRef = useRef();
@@ -30,6 +63,36 @@ export function usePos({ payKey = 'F8', supervisor = false } = {}) {
         clearTimeout(noticeTimer.current);
         noticeTimer.current = setTimeout(() => setNotice(null), 3500);
     };
+
+    // Keep the order on this computer as it changes. Once paid (done) it is cleared, so a refresh on the
+    // "Sale complete" screen can never bring a paid order back to be charged again.
+    useEffect(() => {
+        if (!storageKey) return;
+        const payload = { cart: done ? [] : cart, held, savedAt: Date.now() };
+        latest.current = payload;
+        try { localStorage.setItem(storageKey, JSON.stringify(payload)); } catch { /* storage full or blocked */ }
+        // A burst of scans is sent once, a moment after the last one
+        clearTimeout(sendTimer.current);
+        sendTimer.current = setTimeout(() => { sendDraft(payload); latest.current = null; }, 400);
+    }, [cart, held, done, storageKey]);
+
+    // Closing or refreshing the page: send what hasn't gone yet
+    useEffect(() => {
+        if (!storageKey) return undefined;
+        const flush = () => { if (latest.current) { clearTimeout(sendTimer.current); sendDraft(latest.current, true); latest.current = null; } };
+        window.addEventListener('pagehide', flush);
+        return () => window.removeEventListener('pagehide', flush);
+    }, [storageKey]);
+
+    // Say so when an order came back, so the cashier checks it with the customer
+    useEffect(() => {
+        const back = saved.current;
+        if (!back || (!back.cart.length && !back.held.length)) return;
+        const parts = [];
+        if (back.cart.length) parts.push(`the open order (${back.cart.length} line${back.cart.length === 1 ? '' : 's'})`);
+        if (back.held.length) parts.push(`${back.held.length} held sale${back.held.length === 1 ? '' : 's'}`);
+        flash('warn', `Brought back ${parts.join(' and ')} from before the page closed. Check it before paying.`);
+    }, []);
 
     const subtotal = useMemo(() => round2(cart.reduce((s, l) => s + lineTotal(l), 0)), [cart]);
     const itemCount = cart.reduce((s, l) => s + (l.allows_decimal ? 1 : l.qty), 0);

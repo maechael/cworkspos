@@ -197,19 +197,6 @@
                 @endif
 
                 <div class="ml-auto flex items-center gap-2">
-                    @if ($user->isAdmin())
-                        <details class="relative mr-2" data-menu>
-                            <summary class="btn btn-primary cursor-pointer list-none">{!! $icon('plus', 'h-4 w-4') !!}Create{!! $icon('chevron', 'h-4 w-4') !!}</summary>
-                            <div class="bar-menu w-48">
-                                <a href="{{ route('pos.index') }}">New sale</a>
-                                <a href="{{ route('products.create') }}">Add product</a>
-                                <a href="{{ route('products.batch') }}">Batch add products</a>
-                                <a href="{{ route('deliveries.create') }}">Receive delivery</a>
-                                <a href="{{ route('stock-counts.create') }}">Stock count</a>
-                            </div>
-                        </details>
-                    @endif
-
                     @unless ($posLook)
                         <button type="button" data-theme-toggle class="bar-btn" aria-label="Switch between light and dark" title="Switch between light and dark">
                             <span class="theme-moon">{!! $icon('moon') !!}</span>
@@ -296,16 +283,6 @@
                         <form action="{{ route('products.index') }}" role="search" class="bar-menu fixed inset-x-2 top-14 mt-0 p-2">
                             <input name="q" type="search" aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off" class="input">
                         </form>
-                    </details>
-                    <details class="relative" data-menu>
-                        <summary class="bar-btn" aria-label="Create">{!! $icon('plus') !!}</summary>
-                        <div class="bar-menu w-52">
-                            <a href="{{ route('pos.index') }}">New sale</a>
-                            <a href="{{ route('products.create') }}">Add product</a>
-                            <a href="{{ route('products.batch') }}">Batch add products</a>
-                            <a href="{{ route('deliveries.create') }}">Receive delivery</a>
-                            <a href="{{ route('stock-counts.create') }}">Stock count</a>
-                        </div>
                     </details>
                     <details class="relative" data-menu>
                         <summary class="bar-btn" aria-label="Alerts: {{ $alertCount }}">

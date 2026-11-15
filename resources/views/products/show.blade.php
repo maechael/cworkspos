@@ -75,7 +75,7 @@
         <div class="card overflow-x-auto">
             <h2 class="px-5 py-4 font-semibold">Stock by delivery (expiry)</h2>
             <table class="table">
-                <thead><tr><th>Received</th><th>Supplier</th><th>Expiry</th><th class="text-right">Left</th></tr></thead>
+                <thead><tr><th>Received</th><th>Supplier</th><th>Expiry</th><th class="text-right">Left</th><th><span class="sr-only">Fix</span></th></tr></thead>
                 <tbody>
                 @forelse ($lots as $lot)
                     <tr>
@@ -83,9 +83,10 @@
                         <td>{{ $lot->delivery->supplier?->name ?? '—' }}</td>
                         <td class="{{ $lot->expiry_date && $lot->expiry_date->lte(now()->addDays(30)) ? 'font-semibold text-red-600' : '' }}">{{ $lot->expiry_date?->format('M j, Y') ?? 'No expiry' }}</td>
                         <td class="text-right">{{ qty($lot->remaining_qty) }} / {{ qty($lot->quantity) }}</td>
+                        <td class="text-right"><a href="{{ route('lots.edit', $lot) }}" class="tap text-sm text-brand-700 hover:underline" title="Change the expiry date, correct the count, or remove this batch">Fix</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="text-slate-400">No delivery lots on hand.</td></tr>
+                    <tr><td colspan="5" class="text-slate-400">No delivery lots on hand.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -99,8 +100,8 @@
                     <tr>
                         <td class="whitespace-nowrap">{{ $m->created_at->format('M j, g:i A') }}</td>
                         <td>@include('partials.movement-type', ['type' => $m->type])</td>
-                        <td class="text-xs text-slate-500">{{ $m->reference }}@if ($m->type === 'adjust' && $m->user)<div>by {{ $m->user->name }}</div>@endif</td>
-                        <td class="text-right font-medium {{ $m->quantity < 0 ? 'text-red-600' : 'text-brand-700' }}">{{ $m->quantity > 0 ? '+' : '' }}{{ qty($m->quantity) }}</td>
+                        <td class="text-xs text-slate-500">{{ $m->reference }}@if (in_array($m->type, ['adjust', 'expiry', 'return']) && $m->user)<div>by {{ $m->user->name }}</div>@endif</td>
+                        <td class="text-right font-medium {{ $m->quantity < 0 ? 'text-red-600' : 'text-brand-700' }}">{{ (float) $m->quantity == 0 ? '—' : ($m->quantity > 0 ? '+' : '').qty($m->quantity) }}</td>
                         <td class="text-right">{{ qty($m->balance_after) }}</td>
                     </tr>
                 @empty

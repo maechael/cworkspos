@@ -7,6 +7,7 @@
         'return' => ['Return', 'bg-purple-100 text-purple-700'],
         'count' => ['Count adj.', 'bg-amber-100 text-amber-800'],
         'adjust' => ['Adjustment', 'bg-amber-100 text-amber-800'],
+        'expiry' => ['Expiry date', 'bg-sky-100 text-sky-700'],
     ];
     [$label, $class] = $styles[$type] ?? [ucfirst($type), 'bg-slate-100 text-slate-700'];
 @endphp

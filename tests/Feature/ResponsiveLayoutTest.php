@@ -34,7 +34,7 @@ class ResponsiveLayoutTest extends TestCase
             ->assertSee('data-drawer-open', false)
             ->assertSee('data-drawer-close', false)
             ->assertSee('data-autofocus', false) // the phone search
-            ->assertSee('aria-label="Create"', false);
+            ->assertDontSee('aria-label="Create"', false); // the Create menu was removed on request
     }
 
     public function test_a_cashier_gets_the_same_menu_without_the_owner_tools(): void

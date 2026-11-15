@@ -11,6 +11,7 @@ use App\Services\Inventory;
 use App\Services\SaleVoids;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -37,6 +38,8 @@ class SaleController extends Controller
         return view('pos', [
             'props' => [
                 'cashier' => $request->user()->name,
+                'userId' => $request->user()->id,
+                'draft' => $preview ? null : Cache::get(self::draftKey($request)),
                 'isSupervisor' => $request->user()->isAdmin(),
                 'voidsAllowed' => Approvals::allowed(),
                 'storeName' => config('app.name'),
@@ -47,6 +50,28 @@ class SaleController extends Controller
                 'settingsUrl' => $request->user()->isAdmin() ? route('settings.pos') : null,
             ],
         ]);
+    }
+
+    private static function draftKey(Request $request): string
+    {
+        return 'pos-draft:'.$request->user()->id;
+    }
+
+    /**
+     * The cashier's open order and held sales, saved as they change. The browser keeps a copy too, but writes it
+     * to disk a few seconds late; the database has it at once, so a brownout loses at most the last scan.
+     */
+    public function saveDraft(Request $request)
+    {
+        $data = $request->validate([
+            'cart' => 'present|array|max:500',
+            'held' => 'present|array|max:50',
+            'savedAt' => 'required|integer',
+        ]);
+        abort_if(strlen(json_encode($data)) > 500_000, 413, 'The order is too big to keep.');
+        Cache::put(self::draftKey($request), $data, now()->addDay());
+
+        return response()->noContent();
     }
 
     public function store(Request $request, Inventory $inventory)
@@ -125,6 +150,11 @@ class SaleController extends Controller
 
             return $sale;
         });
+
+        // The paid order must never come back after a refresh, even if the screen's own save didn't arrive
+        if ($draft = Cache::get(self::draftKey($request))) {
+            Cache::put(self::draftKey($request), ['cart' => [], 'held' => $draft['held'] ?? [], 'savedAt' => (int) (microtime(true) * 1000)], now()->addDay());
+        }
 
         return response()->json([
             'id' => $sale->id,

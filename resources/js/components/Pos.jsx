@@ -17,8 +17,11 @@ export const STYLES = { scanpro: ScanPro, cafe: CafeTiles, table: TableService, 
 const PAY_KEYS = { scanpro: 'F12', counter: 'F10' };
 
 /** The cashier screen. The owner picks the style and color scheme under Setup → POS style. */
-export default function Pos({ cashier, isSupervisor, voidsAllowed = true, storeName, style = 'scanpro', styleName, scheme, preview, settingsUrl }) {
-    const pos = usePos({ payKey: PAY_KEYS[style] || 'F8', supervisor: isSupervisor });
+export default function Pos({ cashier, userId, draft = null, isSupervisor, voidsAllowed = true, storeName, style = 'scanpro', styleName, scheme, preview, settingsUrl }) {
+    // Each cashier's open order is kept (in this browser and on the server) through a refresh or a brownout.
+    // Table Service already keeps every table's order itself; a style preview keeps nothing.
+    const storageKey = userId && style !== 'table' && !preview ? `pos-order:${userId}` : null;
+    const pos = usePos({ payKey: PAY_KEYS[style] || 'F8', supervisor: isSupervisor, storageKey, serverDraft: draft });
     const Layout = STYLES[style] || ScanPro;
     const k = getScheme(scheme);
     const colors = themeStyle(k);
