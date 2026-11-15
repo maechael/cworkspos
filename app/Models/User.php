@@ -66,6 +66,27 @@ class User extends Authenticatable
         return $this->isAdmin() && $this->is_super_admin;
     }
 
+    /**
+     * Makes this username the store's one super admin (creating the account if needed) and takes the flag off anyone else.
+     * A null password keeps an existing account's password.
+     */
+    public static function makeSuperAdmin(string $username, ?string $password = null, string $name = 'Super Admin'): self
+    {
+        $user = self::firstOrNew(['username' => $username]);
+        if (! $user->exists) {
+            $user->name = $name;
+        }
+        $user->forceFill(['role' => 'admin', 'is_active' => true, 'is_super_admin' => true]);
+        if ($password !== null) {
+            $user->password = $password;
+        }
+        $user->save();
+
+        self::where('is_super_admin', true)->whereKeyNot($user->id)->update(['is_super_admin' => false]);
+
+        return $user;
+    }
+
     /** Only an active admin can approve a voided line, with their account password or their passkey. */
     public function canApproveVoidWith(string $credential): bool
     {

@@ -140,15 +140,16 @@ Open http://localhost:8000 and sign in.
 
 The starting passwords are in `database/seeders/DatabaseSeeder.php`. **Change both right after the first sign-in** (Owner: System → User accounts), because anyone who can read this code knows them.
 
-#### Super admin (setup account)
+#### Super admin (setup account, `cworks`)
 
-**POS style** and **Scanner test** are for setting the store up, so only the super admin sees them. The owner does not. The super admin can do everything the owner can, and it is hidden from the owner's User accounts list so it can't be changed by mistake. No super admin exists until you make one; the password is typed at the prompt, so it is never stored in the code:
+**POS style** and **Scanner test** are for setting the store up, so only the super admin sees them. The owner does not. The super admin can do everything the owner can, and it is hidden from the owner's User accounts list so it can't be changed by mistake. There is only ever one super admin: the username `cworks`. Its password is never in the code. Put it in `.env` (which is not in git) before seeding:
 
 ```bash
-php artisan user:super-admin setup              # new account called "setup": asks for its password
-php artisan user:super-admin arnold             # or make an existing account the super admin
-php artisan user:super-admin setup --remove     # back to a normal admin
+SUPER_ADMIN_USERNAME=cworks
+SUPER_ADMIN_PASSWORD="the password"
 ```
+
+`php artisan db:seed` (or `migrate --seed`) then creates it. On a server that is already set up, run `php artisan user:super-admin`. Without a password in `.env` it asks for one. Making another account the super admin takes the flag off the old one. `php artisan user:super-admin cworks --remove` turns it back into a normal admin.
 
 ### Using it on phones and tablets in the store
 

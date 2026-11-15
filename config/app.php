@@ -15,6 +15,12 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // The one super admin (sees POS style and Scanner test). Set in .env only, never in the code: the repo is public.
+    'super_admin' => [
+        'username' => env('SUPER_ADMIN_USERNAME', 'cworks'),
+        'password' => env('SUPER_ADMIN_PASSWORD'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

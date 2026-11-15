@@ -119,6 +119,25 @@ class PosStyleTest extends TestCase
         $this->actingAs($this->super)->get(route('users.index'))->assertOk()->assertSee('Super admin');
     }
 
+    public function test_seeding_makes_the_super_admin_from_env_only(): void
+    {
+        config(['app.super_admin' => ['username' => 'cworks', 'password' => null]]);
+        $this->seed();
+        $this->assertNull(User::where('username', 'cworks')->first());
+
+        config(['app.super_admin' => ['username' => 'cworks', 'password' => 'from-env-1']]);
+        $this->seed();
+        $cworks = User::where('username', 'cworks')->first();
+        $this->assertTrue($cworks->isSuperAdmin());
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('from-env-1', $cworks->password));
+        $this->assertSame(1, User::where('is_super_admin', true)->count());
+
+        // Seeding again never resets a password that was changed
+        $cworks->update(['password' => 'changed-later']);
+        $this->seed();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('changed-later', $cworks->fresh()->password));
+    }
+
     public function test_the_command_makes_and_removes_a_super_admin(): void
     {
         $this->artisan('user:super-admin', ['username' => 'dev', '--name' => 'Developer'])
@@ -131,6 +150,9 @@ class PosStyleTest extends TestCase
 
         $this->artisan('user:super-admin', ['username' => 'owner'])->assertSuccessful();
         $this->assertTrue($this->admin->fresh()->isSuperAdmin());
+        // There is only ever one
+        $this->assertSame(1, User::where('is_super_admin', true)->count());
+        $this->assertFalse($dev->fresh()->isSuperAdmin());
 
         $this->artisan('user:super-admin', ['username' => 'owner', '--remove' => true])->assertSuccessful();
         $this->assertFalse($this->admin->fresh()->isSuperAdmin());

@@ -27,6 +27,13 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        // The super admin, only when .env gives it a password (it never lives in the code). An existing account keeps its password.
+        $super = config('app.super_admin');
+        if ($super['username'] && $super['password']) {
+            $exists = User::where('username', $super['username'])->exists();
+            User::makeSuperAdmin($super['username'], $exists ? null : $super['password'], 'CWorks');
+        }
+
         $this->call(StarterListsSeeder::class);
     }
 }
