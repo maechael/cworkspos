@@ -74,15 +74,29 @@
                 ['POS style', route('settings.pos'), $is('settings.pos*'), 'style'],
                 ['Scanner test', route('settings.scanner'), $is('settings.scanner'), 'scanner'],
             ] : [], [
+                ['Import from old POS', route('products.import'), $is('products.import*'), 'import'],
+                ['Backups', route('backups.index'), $is('backups.*'), 'backup'],
                 ['User accounts', route('users.index'), $is('users.*'), 'users'],
             ]),
         ]
-        : [
+        : array_merge([
             'Operations' => [
                 ['Cashier (POS)', route('pos.index'), $is('pos.*'), 'pos'],
                 ['My sales', route('sales.index'), $is('sales.*'), 'sales'],
             ],
-        ];
+        ], $user->doesInventory() ? [
+            // Cashier + Inventory staff also keep the stock
+            'Inventory' => [
+                ['Products', route('products.index'), $is('products.*', 'lots.*'), 'products'],
+                ['Receive delivery', route('deliveries.index'), $is('deliveries.*'), 'deliveries'],
+                ['Stock count', route('stock-counts.index'), $is('stock-counts.*'), 'counts'],
+                ['Stock reports', route('reports.inventory'), $is('reports.*'), 'reports'],
+                ['Baskets', route('baskets.index'), $is('baskets.*'), 'baskets'],
+                $setupLink('Categories', 'categories'),
+                $setupLink('Units', 'units'),
+                $setupLink('Suppliers', 'suppliers'),
+            ],
+        ] : []);
 
     $hideHeading = $hideHeading ?? false;
 
@@ -100,6 +114,8 @@
         'suppliers' => 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14.5a6.5 6.5 0 0 1 3.5 5.5',
         'style' => 'M4 7h9M17 7h3M4 17h3M11 17h9M15 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM9 19.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
         'scanner' => 'M3 8V4h4M21 8V4h-4M3 16v4h4M21 16v4h-4M7.5 8v8M11 8v8M14 8v8M17 8v8',
+        'import' => 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3',
+        'backup' => 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
         'users' => 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 21a7.5 7.5 0 0 1 15 0',
         'logout' => 'M10 4H5v16h5M14 8l4 4-4 4M18 12H9',
         'panel' => 'M4 5h16v14H4zM9.5 5v14',
@@ -120,7 +136,7 @@
     $initials = collect(preg_split('/\s+/', trim($user->name)))->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->join('');
     $showTopBar = ! $fullWidth;
     $lowStockCount = $showTopBar && $user->isAdmin() ? \App\Models\Product::lowStock()->count() : 0;
-    $expiringCount = $showTopBar && $user->isAdmin() ? \App\Models\DeliveryItem::expiringSoon()->count() : 0;
+    $expiringCount = $showTopBar && $user->isAdmin() && track_expiry() ?\App\Models\DeliveryItem::expiringSoon()->count() : 0;
     $alertCount = $lowStockCount + $expiringCount + $approvalCount;
 @endphp
 <div class="flex min-h-screen">
@@ -140,11 +156,11 @@
             </a>
         @else
             {{-- A store name in this spot reads like the person logged in, so a cashier sees their own name. The store's name is on the receipt and the login page. --}}
-            <a href="{{ url('/') }}" title="{{ $user->name }} · Cashier" class="brand-link mb-3 flex items-center gap-3 px-2">
+            <a href="{{ url('/') }}" title="{{ $user->name }} · {{ $user->roleLabel() }}" class="brand-link mb-3 flex items-center gap-3 px-2">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white">{{ $initials }}</span>
                 <span class="nav-text min-w-0 leading-tight whitespace-nowrap">
                     <span class="block truncate text-sm font-bold">{{ $user->name }}</span>
-                    <span class="block text-xs opacity-75">Cashier</span>
+                    <span class="block text-xs opacity-75">{{ $user->roleLabel() }}</span>
                 </span>
             </a>
         @endif
@@ -188,7 +204,7 @@
                     <button type="button" id="sidebar-toggle" class="bar-btn" aria-label="Collapse or expand the sidebar" title="Collapse or expand the sidebar">{!! $icon('panel') !!}</button>
                 @endif
 
-                @if ($user->isAdmin())
+                @if ($user->doesInventory())
                     <form action="{{ route('products.index') }}" class="relative w-full max-w-md" role="search">
                         <input id="top-search" name="q" type="search" value="" data-suggest aria-label="Search products" placeholder="Search products by name or barcode…" autocomplete="off"
                                class="w-full rounded-xl border border-slate-200 bg-white py-2 pr-20 pl-4 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none">
@@ -319,7 +335,7 @@
                     <div class="no-print flex flex-wrap gap-2">@yield('actions')</div>
                 </div>
             @endif
-            @foreach (['success' => 'bg-brand-50 text-brand-700 border-brand-100', 'error' => 'bg-red-50 text-red-700 border-red-100'] as $key => $classes)
+            @foreach (['success' => 'bg-brand-50 text-brand-700 border-brand-100', 'info' => 'bg-slate-50 text-slate-700 border-slate-200', 'error' => 'bg-red-50 text-red-700 border-red-100'] as $key => $classes)
                 @if (session($key))
                     <div class="no-print mb-4 rounded-xl border px-4 py-3 text-sm font-medium {{ $classes }}">{{ session($key) }}</div>
                 @endif

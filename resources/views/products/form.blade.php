@@ -50,7 +50,7 @@
                 <div>
                     <label class="label">Opening stock</label>
                     <input type="number" step="0.001" min="0" name="stock" value="{{ old('stock', 0) }}" class="input">
-                    <p class="mt-1 text-xs text-slate-500">Use “Receive delivery” for stock with expiry dates.</p>
+                    @if (track_expiry())<p class="mt-1 text-xs text-slate-500">Use “Receive delivery” for stock with expiry dates.</p>@endif
                 </div>
             @else
                 <div>

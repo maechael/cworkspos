@@ -13,6 +13,7 @@
                     <label class="label">Role</label>
                     <select name="role" class="input">
                         <option value="cashier">Cashier (POS and own sales only)</option>
+                        <option value="inventory">Cashier + Inventory (POS, products, deliveries, stock counts)</option>
                         <option value="admin">Owner / Admin (everything)</option>
                     </select>
                 </div>
@@ -36,6 +37,7 @@
                         <td>
                             <select name="role" form="user-{{ $u->id }}" class="input py-1">
                                 <option value="cashier" @selected($u->role === 'cashier')>Cashier</option>
+                                <option value="inventory" @selected($u->role === 'inventory')>Cashier + Inventory</option>
                                 <option value="admin" @selected($u->role === 'admin')>Admin</option>
                             </select>
                         </td>

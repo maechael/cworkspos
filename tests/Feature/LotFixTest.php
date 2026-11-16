@@ -32,6 +32,8 @@ class LotFixTest extends TestCase
         }
 
         $this->artisan('migrate');
+        // These tests are about expiry dates, which are off unless switched on (POS style page)
+        \App\Models\Setting::put(['track_expiry' => '1']);
         Carbon::setTestNow('2026-11-15 10:00:00');
         $this->admin = User::create(['name' => 'Owner', 'username' => 'owner', 'role' => 'admin', 'is_active' => true, 'password' => 'secret123']);
         $piece = Unit::firstOrCreate(['name' => 'Piece'], ['abbreviation' => 'pc', 'allows_decimal' => false]);

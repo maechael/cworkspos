@@ -34,7 +34,7 @@ const stockQty = (l) => (Number(l.quantity) || 0) * (l.is_box ? Number(l.box_pie
  * Scan items in any order. Scanning an item again adds 1 to its quantity, and a barcode that isn't
  * in the system becomes a new product to fill in. Saving adds everything to stock as one delivery.
  */
-export default function BatchAdd({ categories, units }) {
+export default function BatchAdd({ categories, units, trackExpiry = true }) {
     const [lines, setLines] = useState(loadDraft);
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -122,7 +122,7 @@ export default function BatchAdd({ categories, units }) {
                     quantity: stockQty(l),
                     unit_cost: l.unit_cost,
                     selling_price: l.selling_price,
-                    expiry_date: l.expiry_date || null,
+                    expiry_date: (trackExpiry && l.expiry_date) || null,
                 })),
             });
             saveDraft([]);
@@ -152,13 +152,13 @@ export default function BatchAdd({ categories, units }) {
                             <th className="w-24">Qty</th>
                             <th className="w-28">Cost</th>
                             <th className="w-28">Price</th>
-                            <th className="w-40">Expiry date</th>
+                            {trackExpiry && <th className="w-40">Expiry date</th>}
                             <th className="w-10"></th>
                         </tr>
                     </thead>
                     <tbody>
                         {lines.length === 0 && (
-                            <tr><td colSpan="8" className="py-10 text-center text-slate-400">No items yet. Scan the first item.</td></tr>
+                            <tr><td colSpan={trackExpiry ? 8 : 7} className="py-10 text-center text-slate-400">No items yet. Scan the first item.</td></tr>
                         )}
                         {lines.map((l, i) => (
                             <tr key={l.key} className={i === 0 ? 'bg-brand-50' : ''}>
@@ -206,7 +206,7 @@ export default function BatchAdd({ categories, units }) {
                                 <td><input type="number" min="0" step={qtyStep(l)} className="input py-1 font-semibold" aria-label="Quantity" value={l.quantity} onChange={(e) => update(l.key, 'quantity', e.target.value)} /></td>
                                 <td><input type="number" min="0" step="0.01" className="input py-1" aria-label="Cost" placeholder="0.00" value={l.unit_cost} onChange={(e) => update(l.key, 'unit_cost', e.target.value)} /></td>
                                 <td><input type="number" min="0" step="0.01" className="input py-1" aria-label="Price" placeholder="0.00" value={l.selling_price} onChange={(e) => update(l.key, 'selling_price', e.target.value)} /></td>
-                                <td><input type="date" className="input py-1" aria-label="Expiry date" value={l.expiry_date} onChange={(e) => update(l.key, 'expiry_date', e.target.value)} /></td>
+                                {trackExpiry && <td><input type="date" className="input py-1" aria-label="Expiry date" value={l.expiry_date} onChange={(e) => update(l.key, 'expiry_date', e.target.value)} /></td>}
                                 <td><button type="button" className="text-slate-400 hover:text-red-600" aria-label="Remove" onClick={() => remove(l.key)}>✕</button></td>
                             </tr>
                         ))}

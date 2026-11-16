@@ -52,7 +52,7 @@ function useNewIds(ids) {
     return fresh;
 }
 
-function Hero({ name, low, expiring }) {
+function Hero({ name, low, expiring, trackExpiry }) {
     const clear = low === 0 && expiring === 0;
     return (
         <section className="dash-hero on-color relative overflow-hidden rounded-2xl px-6 py-7 sm:px-8 sm:py-8">
@@ -60,7 +60,7 @@ function Hero({ name, low, expiring }) {
                 <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{greeting(name)}</h1>
                 <p className="mt-2 text-sm leading-relaxed text-white/90">
                     {clear ? 'Nothing needs your attention right now. The shelves are in good shape.' : (
-                        <>You have {plural(low, 'item')} at or below reorder level and {plural(expiring, 'lot')} expiring within 30 days.<br />Let’s keep the shelves stocked.</>
+                        <>You have {plural(low, 'item')} at or below reorder level{trackExpiry && <> and {plural(expiring, 'lot')} expiring within 30 days</>}.<br />Let’s keep the shelves stocked.</>
                     )}
                 </p>
                 <a href={clear ? `${baseUrl}/pos` : `${baseUrl}/products?filter=low`} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-[#1c46ad] transition hover:bg-[#eef3ff]">
@@ -86,7 +86,7 @@ function Hero({ name, low, expiring }) {
     );
 }
 
-function Rail({ week, expiring, expiringCount, lowStock }) {
+function Rail({ week, expiring, expiringCount, lowStock, trackExpiry }) {
     const pill = 'hit rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-100';
     return (
         <aside className="card self-start p-5">
@@ -96,7 +96,7 @@ function Rail({ week, expiring, expiringCount, lowStock }) {
             </div>
             <ul className="mt-3 grid grid-cols-7 gap-1">
                 {week.days.map((d) => (
-                    <li key={d.date} aria-label={`${d.name} ${d.number}: ${plural(d.deliveries, 'delivery', 'deliveries')}, ${plural(d.expiring, 'lot')} expiring`}
+                    <li key={d.date} aria-label={`${d.name} ${d.number}: ${plural(d.deliveries, 'delivery', 'deliveries')}${trackExpiry ? `, ${plural(d.expiring, 'lot')} expiring` : ''}`}
                         className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-center ${d.today ? 'on-color bg-brand-600 text-white' : 'bg-slate-50 text-slate-800'}`}>
                         <span className={`text-[11px] ${d.today ? 'text-white/85' : 'text-slate-500'}`}>{d.name}</span>
                         <span className="text-sm font-semibold">{d.number}</span>
@@ -109,9 +109,10 @@ function Rail({ week, expiring, expiringCount, lowStock }) {
             </ul>
             <div className="mt-2 flex gap-4 text-xs text-slate-500">
                 <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-brand-500" />Deliveries</span>
-                <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-amber-500" />Lots expiring</span>
+                {trackExpiry && <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-amber-500" />Lots expiring</span>}
             </div>
 
+            {trackExpiry && <>
             <div className="mt-6 flex items-center justify-between">
                 <h2 className="font-semibold text-slate-900">Expiring soon {expiringCount > 0 && <span className="font-normal text-slate-500">({expiringCount})</span>}</h2>
                 <a href={`${baseUrl}/reports/expiry`} className={pill}>View all</a>
@@ -133,6 +134,7 @@ function Rail({ week, expiring, expiringCount, lowStock }) {
                     );
                 })}
             </ul>
+            </>}
 
             <div className="mt-6 flex items-center justify-between">
                 <h2 className="font-semibold text-slate-900">Low stock</h2>
@@ -251,7 +253,7 @@ export default function Dashboard({ initial, userName }) {
     return (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0 space-y-6">
-                <Hero name={userName} low={data.low_stock_count} expiring={data.expiring_count} />
+                <Hero name={userName} low={data.low_stock_count} expiring={data.expiring_count} trackExpiry={data.track_expiry} />
 
                 <section>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -340,7 +342,7 @@ export default function Dashboard({ initial, userName }) {
                 </section>
             </div>
 
-            <Rail week={data.week} expiring={data.expiring} expiringCount={data.expiring_count} lowStock={data.low_stock} />
+            <Rail week={data.week} expiring={data.expiring} expiringCount={data.expiring_count} lowStock={data.low_stock} trackExpiry={data.track_expiry} />
         </div>
     );
 }

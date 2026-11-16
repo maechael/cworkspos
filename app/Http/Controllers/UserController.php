@@ -23,7 +23,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:50|alpha_dash|unique:users',
-            'role' => 'required|in:admin,cashier',
+            'role' => ['required', Rule::in(array_keys(User::ROLES))],
             'password' => 'required|string|min:6',
         ]);
         User::create($data + ['is_active' => true]);
@@ -38,7 +38,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('users')->ignore($user)],
-            'role' => 'required|in:admin,cashier',
+            'role' => ['required', Rule::in(array_keys(User::ROLES))],
             'password' => 'nullable|string|min:6',
             'void_passkey' => 'nullable|string|min:4|max:64',
         ]);

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BasketController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\LotController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\PosSettingsController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleReturnController;
@@ -59,7 +61,33 @@ Route::middleware('auth')->group(function () {
         Route::post('/approvals/switch', [ApprovalController::class, 'toggle'])->name('approvals.switch');
         Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
         Route::post('/approvals/{approval}/decline', [ApprovalController::class, 'decline'])->name('approvals.decline');
+        Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
 
+        // Bringing in the product list from the old POS
+        Route::get('/products/import', [ProductImportController::class, 'create'])->name('products.import');
+        Route::post('/products/import', [ProductImportController::class, 'preview'])->name('products.import.preview');
+        Route::post('/products/import/{token}', [ProductImportController::class, 'store'])->name('products.import.store');
+
+        // Database backups (made every week by themselves)
+        Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
+        Route::get('/backups/{file}', [BackupController::class, 'download'])->where('file', '[A-Za-z0-9._-]+')->name('backups.download');
+
+        // Setup pages: the super admin only, not the owner
+        Route::middleware('super')->group(function () {
+            Route::get('/settings/pos', [PosSettingsController::class, 'edit'])->name('settings.pos');
+            Route::put('/settings/pos', [PosSettingsController::class, 'update'])->name('settings.pos.update');
+            Route::put('/settings/features', [PosSettingsController::class, 'features'])->name('settings.features');
+            Route::view('/settings/scanner', 'settings.scanner')->name('settings.scanner');
+        });
+
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    });
+
+    // Stock work: the owner, and Cashier + Inventory staff
+    Route::middleware('role:admin,inventory')->group(function () {
         Route::get('/products/labels', [ProductController::class, 'labels'])->name('products.labels');
         Route::get('/products/batch', [ProductController::class, 'batch'])->name('products.batch');
         Route::post('/products/batch', [ProductController::class, 'storeBatch'])->name('products.batch.store');
@@ -83,21 +111,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/stock-counts', [StockCountController::class, 'store'])->name('stock-counts.store');
         Route::get('/stock-counts/{stockCount}', [StockCountController::class, 'show'])->name('stock-counts.show');
 
-        Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
         Route::get('/reports/inventory', [ReportController::class, 'inventory'])->name('reports.inventory');
         Route::get('/reports/expiry', [ReportController::class, 'expiry'])->name('reports.expiry');
         Route::get('/reports/movements', [ReportController::class, 'movements'])->name('reports.movements');
-
-        // Setup pages: the super admin only, not the owner
-        Route::middleware('super')->group(function () {
-            Route::get('/settings/pos', [PosSettingsController::class, 'edit'])->name('settings.pos');
-            Route::put('/settings/pos', [PosSettingsController::class, 'update'])->name('settings.pos.update');
-            Route::view('/settings/scanner', 'settings.scanner')->name('settings.scanner');
-        });
-
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
 
         Route::get('/setup/{type}', [MasterDataController::class, 'index'])->name('master.index');
         Route::post('/setup/{type}', [MasterDataController::class, 'store'])->name('master.store');

@@ -27,6 +27,8 @@ class DashboardTest extends TestCase
         }
 
         $this->artisan('migrate');
+        // These tests are about expiry dates, which are off unless switched on (POS style page)
+        \App\Models\Setting::put(['track_expiry' => '1']);
         // A Wednesday at 10:00, so this week started on Monday the 2nd
         Carbon::setTestNow('2026-11-04 10:00:00');
         $this->admin = User::create(['name' => 'Owner', 'username' => 'owner', 'email' => 'owner@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'secret123']);

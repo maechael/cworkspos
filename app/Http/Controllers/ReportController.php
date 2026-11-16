@@ -128,6 +128,10 @@ class ReportController extends Controller
 
     public function expiry(Request $request)
     {
+        if (! track_expiry()) {
+            return redirect()->route('reports.inventory')->with('info', 'Expiry dates are turned off (POS style page), so there is no expiry report.');
+        }
+
         $days = (int) $request->input('days', 30);
 
         $lots = DeliveryItem::with('product.unit', 'delivery.supplier')

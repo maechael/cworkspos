@@ -7,7 +7,7 @@ import { baseUrl, beep, errorMessage, lookupBarcode, peso, scanQty } from '../li
 let lineKey = 0;
 const today = () => new Date().toLocaleDateString('en-CA');
 
-export default function Receiving({ suppliers }) {
+export default function Receiving({ suppliers, trackExpiry = true }) {
     const [header, setHeader] = useState({ supplier_id: '', reference_no: '', received_at: today(), notes: '' });
     const [lines, setLines] = useState([]);
     const [missing, setMissing] = useState(null); // { code, qty } of a scan that isn't on file
@@ -60,7 +60,8 @@ export default function Receiving({ suppliers }) {
         });
 
     const total = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0);
-    const noExpiry = lines.filter((l) => !l.expiry_date).length;
+    // With expiry dates switched off (POS style page) nothing asks for them
+    const noExpiry = trackExpiry ? lines.filter((l) => !l.expiry_date).length : 0;
 
     // Not everything expires, so a blank date is allowed, but it should be on purpose
     const receive = () => {
@@ -83,7 +84,7 @@ export default function Receiving({ suppliers }) {
                     product_id: l.product.id,
                     quantity: l.quantity,
                     unit_cost: l.unit_cost,
-                    expiry_date: l.expiry_date || null,
+                    expiry_date: (trackExpiry && l.expiry_date) || null,
                     selling_price: l.selling_price === '' ? null : l.selling_price,
                 })),
             });
@@ -138,7 +139,7 @@ export default function Receiving({ suppliers }) {
                             <th>Product</th>
                             <th className="w-28">Qty</th>
                             <th className="w-32">Unit cost</th>
-                            <th className="w-44">Expiry date</th>
+                            {trackExpiry && <th className="w-44">Expiry date</th>}
                             <th className="w-32">New price</th>
                             <th className="text-right">Line cost</th>
                             <th className="w-28"></th>
@@ -146,7 +147,7 @@ export default function Receiving({ suppliers }) {
                     </thead>
                     <tbody>
                         {lines.length === 0 && (
-                            <tr><td colSpan="7" className="py-10 text-center text-slate-400">No items yet. Scan the first item from the delivery.</td></tr>
+                            <tr><td colSpan={trackExpiry ? 7 : 6} className="py-10 text-center text-slate-400">No items yet. Scan the first item from the delivery.</td></tr>
                         )}
                         {lines.map((l) => (
                             <tr key={l.key}>
@@ -156,14 +157,16 @@ export default function Receiving({ suppliers }) {
                                 </td>
                                 <td><input type="number" min="0" step={l.product.allows_decimal ? '0.01' : '1'} className="input py-1" value={l.quantity} onChange={(e) => update(l.key, 'quantity', e.target.value)} /></td>
                                 <td><input type="number" min="0" step="0.01" className="input py-1" value={l.unit_cost} onChange={(e) => update(l.key, 'unit_cost', e.target.value)} /></td>
-                                <td>
-                                    <input type="date" aria-label={`Expiry date of ${l.product.name}`} data-blank={l.expiry_date ? undefined : ''} className={`input py-1 ${l.expiry_date ? '' : 'border-amber-500'}`} value={l.expiry_date} onChange={(e) => update(l.key, 'expiry_date', e.target.value)} />
-                                    {!l.expiry_date && <div className="mt-0.5 text-xs font-medium text-amber-700">No date yet</div>}
-                                </td>
+                                {trackExpiry && (
+                                    <td>
+                                        <input type="date" aria-label={`Expiry date of ${l.product.name}`} data-blank={l.expiry_date ? undefined : ''} className={`input py-1 ${l.expiry_date ? '' : 'border-amber-500'}`} value={l.expiry_date} onChange={(e) => update(l.key, 'expiry_date', e.target.value)} />
+                                        {!l.expiry_date && <div className="mt-0.5 text-xs font-medium text-amber-700">No date yet</div>}
+                                    </td>
+                                )}
                                 <td><input type="number" min="0" step="0.01" className="input py-1" placeholder="keep" value={l.selling_price} onChange={(e) => update(l.key, 'selling_price', e.target.value)} /></td>
                                 <td className="text-right font-medium">{peso((Number(l.quantity) || 0) * (Number(l.unit_cost) || 0))}</td>
                                 <td className="whitespace-nowrap text-right">
-                                    <button type="button" className="text-xs font-medium text-brand-700 hover:underline" title="Some of this item expire on a different date, such as another box" onClick={() => splitLot(l)}>+ another date</button>
+                                    {trackExpiry && <button type="button" className="text-xs font-medium text-brand-700 hover:underline" title="Some of this item expire on a different date, such as another box" onClick={() => splitLot(l)}>+ another date</button>}
                                     <button type="button" className="ml-3 text-slate-400 hover:text-red-600" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>✕</button>
                                 </td>
                             </tr>

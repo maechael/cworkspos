@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super' => \App\Http\Middleware\EnsureSuperAdmin::class,
         ]);
         $middleware->append(\App\Http\Middleware\NoIndex::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\RunOverdueBackup::class);
         $middleware->redirectUsersTo(fn () => auth()->user()?->isAdmin() ? route('dashboard') : route('pos.index'));
     })
     ->withExceptions(function (Exceptions $exceptions) {

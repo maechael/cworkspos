@@ -199,6 +199,37 @@ git push
 
 Stop `npm run dev` before testing the built version: while it runs, the app loads the screens from it instead of `public/build`.
 
+### Importing products from the old POS
+
+Owner: **System → Import from old POS** (or the button on Products). Choose the product list the old POS exports. It is an old Excel `.xls` file even when it is named `.csv`; `.xlsx` and real CSV work too. A preview shows what will happen, and nothing is saved until you press Import.
+
+- Name, Price and Cost come over. Barcode 1 becomes the main barcode and Barcodes 2 and 3 extra ones. Qty becomes opening stock for new products, and Warn Qty the reorder level. Member prices, tax, colors and fonts are left behind.
+- An exact duplicate row (same name and barcode) is skipped. A barcode the old POS gave to two different items stays on the first one only. A repeated name with another barcode becomes an extra barcode on the first.
+- Items with no barcode get an in-store code you can print on a label.
+- Products already here are matched by barcode, then by exact name. You choose whether to update their name, price, cost and reorder level, and separately whether to set their stock to the old Qty.
+
+### Roles
+
+| Role | Can use |
+|---|---|
+| Cashier | the cashier screen and their own sales |
+| Cashier + Inventory | the cashier screen, plus products, receiving deliveries, stock counts, baskets, categories, units, suppliers and the stock reports. Not the dashboard, the sales report, approvals, accounts, imports or backups |
+| Owner / Admin | everything except the super admin's setup pages |
+
+Cashier + Inventory staff still need the owner's OK for voids and returns, like cashiers.
+
+### Expiry dates on or off
+
+Super admin: **POS style → Expiry dates**. It is **off** unless turned on. While off, nothing asks for or shows expiry dates: receiving, batch add, products, the dashboard, the bell and the expiry report. Dates already saved are kept and come back when it is turned on again.
+
+### Backups
+
+The whole database is backed up **every week** to `storage/app/private/backups` (gzipped `.sql`), and the newest 8 are kept. The owner sees them under **System → Backups**: download one, or press Back up now. `php artisan db:backup` makes one by hand.
+
+- The backup is scheduled for Sunday 2 AM. That needs `php artisan schedule:run` every minute: a cron line on a Linux server, or a Windows Task Scheduler task.
+- Without the scheduler, the first time anyone uses the app after the last backup turns a week old, the app makes one by itself, after the page has already loaded.
+- Backups stay on the same computer, so download one now and then and keep it somewhere else. To restore, use phpMyAdmin → Import with the `.sql.gz` file.
+
 ### Emptying the store (keeps the accounts)
 
 To remove the sample data, or start a copy over, keeping only the accounts:

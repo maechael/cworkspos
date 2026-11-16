@@ -60,6 +60,24 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    /** Every role, with the name shown on screen. */
+    public const ROLES = [
+        'cashier' => 'Cashier',
+        'inventory' => 'Cashier + Inventory',
+        'admin' => 'Owner / Admin',
+    ];
+
+    /** Cashier + Inventory staff: the cashier screen plus products, deliveries, stock counts and stock reports. */
+    public function doesInventory(): bool
+    {
+        return $this->role === 'inventory' || $this->isAdmin();
+    }
+
+    public function roleLabel(): string
+    {
+        return self::ROLES[$this->role] ?? ucfirst((string) $this->role);
+    }
+
     /** The setup account: everything an admin has, plus POS style and Scanner test. Made with `php artisan user:super-admin`. */
     public function isSuperAdmin(): bool
     {

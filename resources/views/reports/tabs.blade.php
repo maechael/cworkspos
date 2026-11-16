@@ -1,5 +1,11 @@
 <div class="no-print mb-4 flex flex-wrap gap-1 border-b border-slate-200">
-    @foreach (['reports.sales' => 'Sales', 'reports.inventory' => 'Inventory value', 'reports.expiry' => 'Expiring items', 'reports.movements' => 'Stock movements'] as $route => $label)
+    @php
+        $tabs = ['reports.sales' => 'Sales', 'reports.inventory' => 'Inventory value', 'reports.expiry' => 'Expiring items', 'reports.movements' => 'Stock movements'];
+        if (! track_expiry()) unset($tabs['reports.expiry']);
+        // Cashier + Inventory staff see the stock reports, not the money ones
+        if (! auth()->user()->isAdmin()) unset($tabs['reports.sales']);
+    @endphp
+    @foreach ($tabs as $route => $label)
         <a href="{{ route($route) }}"
            class="-mb-px border-b-2 px-4 py-2 text-sm font-medium {{ request()->routeIs($route) ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800' }}">{{ $label }}</a>
     @endforeach

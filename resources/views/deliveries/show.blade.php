@@ -17,15 +17,18 @@
         $lines = $delivery->items->sortBy([['product_id', 'asc'], ['id', 'asc']]);
         $onShelf = $lines->filter(fn ($item) => $item->remaining_qty > 0);
         $noDate = $onShelf->whereNull('expiry_date')->count();
+        $dates = track_expiry();
     @endphp
+    @if ($dates)
     <form id="expiry-form" method="POST" action="{{ route('deliveries.expiry', $delivery) }}">@csrf @method('PUT')</form>
     @foreach ($onShelf as $item)
         <form id="split-{{ $item->id }}" method="POST" action="{{ route('deliveries.items.split', [$delivery, $item]) }}">@csrf</form>
     @endforeach
+    @endif
 
     <div class="card overflow-x-auto">
         <table class="table min-w-[860px]">
-            <thead><tr><th>Product</th><th class="text-right">Received</th><th class="text-right">Still on shelf</th><th class="text-right">Unit cost</th><th class="w-72">Expiry date</th><th class="text-right">Line cost</th></tr></thead>
+            <thead><tr><th>Product</th><th class="text-right">Received</th><th class="text-right">Still on shelf</th><th class="text-right">Unit cost</th>@if ($dates)<th class="w-72">Expiry date</th>@endif<th class="text-right">Line cost</th></tr></thead>
             <tbody>
             @foreach ($lines as $item)
                 @php($unit = $item->product->unit)
@@ -34,6 +37,7 @@
                     <td class="text-right align-top">{{ qty($item->quantity) }} {{ $unit->abbreviation }}</td>
                     <td class="text-right align-top">{{ qty($item->remaining_qty) }}</td>
                     <td class="text-right align-top">{{ peso($item->unit_cost) }}</td>
+                    @if ($dates)
                     <td class="align-top">
                         @if ($item->remaining_qty > 0)
                             <input type="date" name="expiry[{{ $item->id }}]" form="expiry-form" value="{{ old('expiry.'.$item->id, $item->expiry_date?->format('Y-m-d')) }}" aria-label="Expiry date of {{ $item->product->name }}" class="input py-1 {{ $item->expiry_date ? '' : 'border-amber-500' }}">
@@ -54,6 +58,7 @@
                             {{ $item->expiry_date?->format('M j, Y') ?? '—' }} <span class="text-xs text-slate-500">· all sold</span>
                         @endif
                     </td>
+                    @endif
                     <td class="text-right align-top font-medium">{{ peso($item->quantity * $item->unit_cost) }}</td>
                 </tr>
             @endforeach
@@ -61,7 +66,7 @@
         </table>
     </div>
 
-    @if ($onShelf->isNotEmpty())
+    @if ($dates && $onShelf->isNotEmpty())
         <div class="mt-3 flex flex-wrap items-center justify-end gap-3">
             <p class="text-sm text-slate-500">
                 @if ($noDate){{ $noDate }} line{{ $noDate === 1 ? '' : 's' }} still {{ $noDate === 1 ? 'needs a date' : 'need dates' }}. @endif

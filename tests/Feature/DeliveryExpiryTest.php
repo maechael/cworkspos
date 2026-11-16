@@ -35,6 +35,8 @@ class DeliveryExpiryTest extends TestCase
         }
 
         $this->artisan('migrate');
+        // These tests are about expiry dates, which are off unless switched on (POS style page)
+        \App\Models\Setting::put(['track_expiry' => '1']);
         $this->admin = User::create(['name' => 'Owner', 'username' => 'owner', 'role' => 'admin', 'is_active' => true, 'password' => 'secret123']);
         $piece = Unit::firstOrCreate(['name' => 'Piece'], ['abbreviation' => 'pc', 'allows_decimal' => false]);
         $this->coffee = Product::create(['barcode' => '4800000000017', 'name' => '3 in 1 Coffee', 'unit_id' => $piece->id, 'cost_price' => 10, 'selling_price' => 12, 'stock' => 0, 'is_active' => true]);

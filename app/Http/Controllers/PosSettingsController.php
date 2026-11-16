@@ -42,6 +42,17 @@ class PosSettingsController extends Controller
         return response()->json(['message' => 'Cashier screen updated.', 'current' => static::current()]);
     }
 
+    /** Store-wide switches on the same page. For now: expiry dates on or off. */
+    public function features(Request $request)
+    {
+        $on = $request->boolean('track_expiry');
+        Setting::put(['track_expiry' => $on ? '1' : '0']);
+
+        return back()->with('success', $on
+            ? 'Expiry dates are on: deliveries ask for them and expiring items are shown.'
+            : 'Expiry dates are off and hidden everywhere. Dates already saved are kept.');
+    }
+
     /**
      * A green as inline CSS variables (--pos-brand-dark:#066A3C;...), so the pages a cashier sees have the
      * right colors from the first paint. The values are in schemes.json, shared with the React screens.

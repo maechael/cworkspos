@@ -73,20 +73,21 @@
 
     <div class="mt-4 grid gap-4 lg:grid-cols-2">
         <div class="card overflow-x-auto">
-            <h2 class="px-5 py-4 font-semibold">Stock by delivery (expiry)</h2>
+            @php($dates = track_expiry())
+            <h2 class="px-5 py-4 font-semibold">Stock by delivery{{ $dates ? ' (expiry)' : '' }}</h2>
             <table class="table">
-                <thead><tr><th>Received</th><th>Supplier</th><th>Expiry</th><th class="text-right">Left</th><th><span class="sr-only">Fix</span></th></tr></thead>
+                <thead><tr><th>Received</th><th>Supplier</th>@if ($dates)<th>Expiry</th>@endif<th class="text-right">Left</th><th><span class="sr-only">Fix</span></th></tr></thead>
                 <tbody>
                 @forelse ($lots as $lot)
                     <tr>
                         <td><a class="hover:underline" href="{{ route('deliveries.show', $lot->delivery_id) }}">{{ $lot->delivery->received_at->format('M j, Y') }}</a></td>
                         <td>{{ $lot->delivery->supplier?->name ?? '—' }}</td>
-                        <td class="{{ $lot->expiry_date && $lot->expiry_date->lte(now()->addDays(30)) ? 'font-semibold text-red-600' : '' }}">{{ $lot->expiry_date?->format('M j, Y') ?? 'No expiry' }}</td>
+                        @if ($dates)<td class="{{ $lot->expiry_date && $lot->expiry_date->lte(now()->addDays(30)) ? 'font-semibold text-red-600' : '' }}">{{ $lot->expiry_date?->format('M j, Y') ?? 'No expiry' }}</td>@endif
                         <td class="text-right">{{ qty($lot->remaining_qty) }} / {{ qty($lot->quantity) }}</td>
-                        <td class="text-right"><a href="{{ route('lots.edit', $lot) }}" class="tap text-sm text-brand-700 hover:underline" title="Change the expiry date, correct the count, or remove this batch">Fix</a></td>
+                        <td class="text-right"><a href="{{ route('lots.edit', $lot) }}" class="tap text-sm text-brand-700 hover:underline" title="{{ $dates ? 'Change the expiry date, correct the count, or remove this batch' : 'Correct the count, or remove this batch' }}">Fix</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="text-slate-400">No delivery lots on hand.</td></tr>
+                    <tr><td colspan="{{ $dates ? 5 : 4 }}" class="text-slate-400">No delivery lots on hand.</td></tr>
                 @endforelse
                 </tbody>
             </table>

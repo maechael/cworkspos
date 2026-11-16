@@ -114,8 +114,10 @@ class DashboardController extends Controller
 
         $deliveries = Delivery::whereBetween('received_at', $range)
             ->selectRaw('DATE(received_at) as day, COUNT(*) as total')->groupBy('day')->toBase()->pluck('total', 'day');
-        $expiring = DeliveryItem::where('remaining_qty', '>', 0)->whereBetween('expiry_date', $range)
-            ->selectRaw('DATE(expiry_date) as day, COUNT(*) as total')->groupBy('day')->toBase()->pluck('total', 'day');
+        $expiring = track_expiry()
+            ? DeliveryItem::where('remaining_qty', '>', 0)->whereBetween('expiry_date', $range)
+                ->selectRaw('DATE(expiry_date) as day, COUNT(*) as total')->groupBy('day')->toBase()->pluck('total', 'day')
+            : collect();
 
         return [
             'month' => $today->format('F'),
@@ -172,7 +174,8 @@ class DashboardController extends Controller
                 'unit' => $p->unit->abbreviation,
             ]);
 
-        $expiring = DeliveryItem::expiringSoon()->with('product.unit')->orderBy('expiry_date')->limit(5)->get()
+        $trackExpiry = track_expiry();
+        $expiring = ! $trackExpiry ? collect() : DeliveryItem::expiringSoon()->with('product.unit')->orderBy('expiry_date')->limit(5)->get()
             ->map(fn ($lot) => [
                 'id' => $lot->id,
                 'name' => $lot->product->name,
@@ -210,7 +213,8 @@ class DashboardController extends Controller
             'low_stock' => $lowStock,
             'low_stock_count' => Product::lowStock()->count(),
             'expiring' => $expiring,
-            'expiring_count' => DeliveryItem::expiringSoon()->count(),
+            'expiring_count' => $trackExpiry ? DeliveryItem::expiringSoon()->count() : 0,
+            'track_expiry' => $trackExpiry,
             'updated_at' => now()->format('g:i:s A'),
         ];
     }
